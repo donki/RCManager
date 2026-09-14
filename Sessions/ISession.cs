@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace SocRcManager.Sessions;
 
@@ -21,4 +21,15 @@ public interface ISession
     void Focus();
 
     void Disconnect();
+
+    /// <summary>
+    /// La sesion sabe ponerse a pantalla completa por si misma (el control RDP de Windows, con su
+    /// barra superior que se esconde sola). Si no, lo hace la ventana.
+    /// </summary>
+    bool HasNativeFullScreen { get; }
+
+    void EnterFullScreen();
+
+    /// <summary>Ha salido de su pantalla completa nativa (por la barra o por el servidor).</summary>
+    event Action? LeftFullScreen;
 }

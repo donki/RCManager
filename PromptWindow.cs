@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using SocRcManager.Localization;
@@ -15,8 +15,9 @@ public sealed class PromptWindow : Window
 {
     private readonly TextBox? _text;
     private readonly PasswordBox? _password;
+    private readonly CheckBox? _check;
 
-    private PromptWindow(Window owner, string title, string message, string? initial, bool password, bool confirm)
+    private PromptWindow(Window owner, string title, string message, string? initial, bool password, bool confirm, string? checkText = null)
     {
         Owner = owner;
         Title = title;
@@ -45,6 +46,11 @@ public sealed class PromptWindow : Window
             {
                 _password = new PasswordBox { Style = (Style)FindResource("PasswordField"), Margin = new Thickness(0, 10, 0, 0) };
                 stack.Children.Add(_password);
+                if (checkText is not null)
+                {
+                    _check = new CheckBox { Style = (Style)FindResource("Check"), Content = checkText, Margin = new Thickness(0, 10, 0, 0) };
+                    stack.Children.Add(_check);
+                }
             }
             else
             {
@@ -91,6 +97,13 @@ public sealed class PromptWindow : Window
     {
         var w = new PromptWindow(owner, title, message, null, password: true, confirm: false);
         return w.ShowDialog() == true ? w._password!.Password : null;
+    }
+
+    /// <summary>Una contraseña con la casilla de «guardarla». Null si se cancela.</summary>
+    public static (string Password, bool Save)? AskPassword(Window owner, string title, string message, string saveText)
+    {
+        var w = new PromptWindow(owner, title, message, null, password: true, confirm: false, checkText: saveText);
+        return w.ShowDialog() == true ? (w._password!.Password, w._check!.IsChecked == true) : null;
     }
 
     public static bool Confirm(Window owner, string title, string message) =>

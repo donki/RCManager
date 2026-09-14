@@ -41,6 +41,8 @@ public static class Loc
         ["DeleteTooltip"] = "Delete",
         ["ConnectTooltip"] = "Connect",
         ["DisconnectTooltip"] = "Disconnect this tab",
+        ["FullScreenTooltip"] = "Full screen (F11; Ctrl+Esc to come back)",
+        ["ExitFullScreenTooltip"] = "Leave full screen (Ctrl+Esc)",
         ["OpenFileTooltip"] = "Open the connections file folder",
         ["ImportTooltip"] = "Import from Remote Desktop Manager (.rdm)",
         ["Imported"] = "Imported {0} connections ({1} already existed, {2} of unsupported types skipped). Passwords are not imported: they are asked for when connecting.",
@@ -91,6 +93,7 @@ public static class Loc
         ["RenameFolderTooltip"] = "Rename folder",
         ["PasswordPrompt"] = "Password for {0}@{1}",
         ["PasswordTitle"] = "Password",
+        ["SavePassword"] = "Remember it on this PC (encrypted)",
         ["Unnamed"] = "(unnamed)",
 
         ["EditTitle"] = "Connection",
@@ -152,6 +155,8 @@ public static class Loc
         ["DeleteTooltip"] = "Borrar",
         ["ConnectTooltip"] = "Conectar",
         ["DisconnectTooltip"] = "Desconectar esta pestaña",
+        ["FullScreenTooltip"] = "Pantalla completa (F11; Ctrl+Esc para volver)",
+        ["ExitFullScreenTooltip"] = "Salir de pantalla completa (Ctrl+Esc)",
         ["OpenFileTooltip"] = "Abrir la carpeta del fichero de conexiones",
         ["ImportTooltip"] = "Importar de Remote Desktop Manager (.rdm)",
         ["Imported"] = "Importadas {0} conexiones ({1} ya existían, {2} de tipos no admitidos se han dejado fuera). Las contraseñas no se importan: se piden al conectar.",
@@ -202,6 +207,7 @@ public static class Loc
         ["RenameFolderTooltip"] = "Renombrar la carpeta",
         ["PasswordPrompt"] = "Contraseña de {0}@{1}",
         ["PasswordTitle"] = "Contraseña",
+        ["SavePassword"] = "Recordarla en este PC (cifrada)",
         ["Unnamed"] = "(sin nombre)",
 
         ["EditTitle"] = "Conexión",

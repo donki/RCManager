@@ -14,13 +14,13 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="320" MinWidth="200" />
-            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition x:Name="TreeColumn" Width="320" MinWidth="200" />
+            <ColumnDefinition x:Name="SplitterColumn" Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!-- ============================ Arbol ============================ -->
-        <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource CardBackground}">
+        <Border x:Name="TreePane" Grid.Row="0" Grid.Column="0" Background="{DynamicResource CardBackground}">
             <DockPanel>
                 <!-- Solo iconos (constitucion 6); el nombre de cada uno va en el tooltip. -->
                 <WrapPanel DockPanel.Dock="Top" Margin="8,8,8,4">
@@ -61,17 +61,22 @@
                 </Grid>
 
                 <Grid>
+                    <!-- Arrastrar y soltar: una conexion o una carpeta se lleva a otra carpeta (o a la
+                         raiz, soltando en el hueco de abajo). -->
                     <TreeView x:Name="Tree" Background="Transparent" BorderThickness="0" Padding="4"
-                              ItemContainerStyle="{StaticResource TreeItem}"
+                              ItemContainerStyle="{StaticResource TreeItem}" AllowDrop="True"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               SelectedItemChanged="OnTreeSelectionChanged"
-                              MouseDoubleClick="OnTreeDoubleClick" KeyDown="OnTreeKeyDown" />
+                              MouseDoubleClick="OnTreeDoubleClick" KeyDown="OnTreeKeyDown"
+                              PreviewMouseLeftButtonDown="OnTreeMouseDown" PreviewMouseMove="OnTreeMouseMove"
+                              DragOver="OnTreeDragOver" DragLeave="OnTreeDragLeave" Drop="OnTreeDrop" />
                     <TextBlock x:Name="EmptyTree" Text="{loc:T EmptyTree}" Style="{StaticResource HintText}"
                                TextWrapping="Wrap" TextAlignment="Center" Margin="24" VerticalAlignment="Center" />
                 </Grid>
             </DockPanel>
         </Border>
 
-        <GridSplitter Grid.Row="0" Grid.Column="1" Width="4" Background="{DynamicResource Separator}"
+        <GridSplitter x:Name="Splitter" Grid.Row="0" Grid.Column="1" Width="4" Background="{DynamicResource Separator}"
                       HorizontalAlignment="Center" VerticalAlignment="Stretch" />
 
         <!-- ============================ Pestañas ============================ -->
@@ -88,8 +93,25 @@
         </Grid>
 
         <!-- ============================ Estado ============================ -->
-        <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource CardBackground}" Padding="10,4">
+        <Border x:Name="StatusBar" Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource CardBackground}" Padding="10,4">
             <TextBlock x:Name="StatusText" Style="{StaticResource HintText}" TextTrimming="CharacterEllipsis" />
+        </Border>
+
+        <!-- Pantalla completa de la ventana (SSH): barra superior que se esconde sola y aparece al
+             llevar el raton al borde de arriba, con el nombre de la sesion y el boton de salir.
+             (RDP usa la barra del propio control de Windows.) -->
+        <Border x:Name="FullScreenBar" Grid.Row="0" Grid.Column="2" Background="{DynamicResource CardBackground}"
+                VerticalAlignment="Top" HorizontalAlignment="Center" Padding="14,4" Margin="0,0,0,0"
+                CornerRadius="0,0,12,12" Visibility="Collapsed" Panel.ZIndex="10"
+                MouseEnter="OnFullScreenBarEnter" MouseLeave="OnFullScreenBarLeave">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="FullScreenTitle" VerticalAlignment="Center" Margin="0,0,12,0"
+                           Foreground="{DynamicResource TextPrimary}" />
+                <Button x:Name="ExitFullScreenButton" Style="{StaticResource IconButton}" Content="&#xE73F;"
+                        ToolTip="{loc:T ExitFullScreenTooltip}" Click="OnToggleFullScreenClick" />
+                <Button x:Name="FullScreenCloseButton" Style="{StaticResource DangerIconButton}" Content="&#xE711;"
+                        ToolTip="{loc:T DisconnectTooltip}" Click="OnFullScreenCloseClick" />
+            </StackPanel>
         </Border>
     </Grid>
 </Window>

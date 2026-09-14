@@ -1,4 +1,20 @@
-# Changelog — sOC Remote Connections Manager
+﻿# Changelog — sOC Remote Connections Manager
+
+## 2026.9.14.2 — Pantalla completa de verdad, arrastrar en el árbol y contraseña al conectar
+
+- **Pantalla completa** desde el botón de la pestaña. RDP usa la del propio control de Windows
+  (toda la pantalla, con la barra de conexión de arriba que se esconde sola y trae restaurar y
+  cerrar; el servidor cambia la resolución a la de la pantalla). SSH: la ventana entera, con una
+  barra superior que se esconde sola y vuelve al llevar el ratón arriba, con el nombre de la sesión,
+  salir de pantalla completa y desconectar. F11 entra y sale; Ctrl+Esc sale.
+- **Arrastrar y soltar en el árbol**: una conexión o una carpeta entera se lleva a otra carpeta
+  soltándola encima (sobre una conexión, a su carpeta). La carpeta de destino se tiñe al pasar.
+- **Contraseña al conectar**: la ventana que la pide ofrece **recordarla en este PC** (cifrada con
+  DPAPI para el usuario de Windows, igual que desde el editor).
+- Corregido: la fila seleccionada del árbol no se veía bien (ahora índigo con texto blanco) y el
+  árbol no se desplaza de lado (se recorta), así que las flechas de las carpetas no se pierden.
+- Corregido: al editar una conexión, la carpeta salía vacía y no se podía escribir (el desplegable
+  editable no tenía caja de texto).
 
 ## 2026.9.14.1 — En la nube si quieres, importación de RDM y nombre definitivo
 

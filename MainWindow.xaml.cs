@@ -118,6 +118,8 @@ public partial class MainWindow : Window
             var name = slash >= 0 ? path[(slash + 1)..] : path;
             var item = new TreeViewItem
             {
+                // El estilo del arbol no baja solo a los nodos anidados creados a mano.
+                Style = (Style)FindResource("TreeItem"),
                 Header = Header("", name),
                 Tag = new Node { FolderPath = path },
                 IsExpanded = filter.Length > 0 || expanded.Count == 0 || expanded.Contains(path),
@@ -142,6 +144,7 @@ public partial class MainWindow : Window
 
             var item = new TreeViewItem
             {
+                Style = (Style)FindResource("TreeItem"),
                 // El servidor al lado del nombre, salvo que sea lo mismo (importado de RDM suele serlo).
                 Header = Header(c.Kind == ConnectionKind.Ssh ? "" : "", c.Name.Length > 0 ? c.Name : Loc.Get("Unnamed"),
                     string.Equals(c.Caption, c.Name, StringComparison.OrdinalIgnoreCase) ? null : c.Caption),
@@ -178,20 +181,179 @@ public partial class MainWindow : Window
 
     private FrameworkElement Header(string glyph, string text, string? detail = null)
     {
+        // Sin Foreground fijo: lo heredan de la fila, que pasa a blanco al seleccionarse. El icono
+        // va en indigo salvo en la fila seleccionada, y el detalle atenuado.
         var panel = new StackPanel { Orientation = Orientation.Horizontal };
-        panel.Children.Add(new TextBlock
+        var icon = new TextBlock
         {
             Text = glyph,
             FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
             FontSize = 14,
-            Foreground = (System.Windows.Media.Brush)FindResource("Primary"),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 8, 0),
-        });
-        panel.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, Foreground = (System.Windows.Media.Brush)FindResource("TextPrimary") });
+        };
+        icon.Style = RowStyle((System.Windows.Media.Brush)FindResource("Primary"));
+        panel.Children.Add(icon);
+        panel.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center });
         if (detail is not null)
-            panel.Children.Add(new TextBlock { Text = detail, Style = (Style)FindResource("HintText"), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        {
+            var hint = new TextBlock { Text = detail, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, FontSize = 12 };
+            hint.Style = RowStyle((System.Windows.Media.Brush)FindResource("TextSecondary"));
+            panel.Children.Add(hint);
+        }
         return panel;
+    }
+
+    /// <summary>Estilo de un texto de la fila: su color propio, o el de la fila si esta seleccionada.</summary>
+    private static Style RowStyle(System.Windows.Media.Brush normal)
+    {
+        var style = new Style(typeof(TextBlock));
+        style.Setters.Add(new Setter(TextBlock.ForegroundProperty, normal));
+        var selected = new DataTrigger
+        {
+            Binding = new System.Windows.Data.Binding("IsSelected") { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(TreeViewItem), 1) },
+            Value = true,
+        };
+        selected.Setters.Add(new Setter(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(TreeViewItem), 1) }));
+        style.Triggers.Add(selected);
+        return style;
+    }
+
+    // =====================================================================
+    //  Arrastrar y soltar en el arbol
+    // =====================================================================
+
+    private Point _dragStart;
+    private TreeViewItem? _dragItem;
+    private TreeViewItem? _dropTarget;
+
+    private static TreeViewItem? ItemAt(DependencyObject? source)
+    {
+        while (source is not null && source is not TreeViewItem)
+            source = System.Windows.Media.VisualTreeHelper.GetParent(source);
+        return source as TreeViewItem;
+    }
+
+    private void OnTreeMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragStart = e.GetPosition(Tree);
+        _dragItem = ItemAt(e.OriginalSource as DependencyObject);
+    }
+
+    private void OnTreeMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragItem?.Tag is not Node node)
+            return;
+        var delta = e.GetPosition(Tree) - _dragStart;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        var item = _dragItem;
+        _dragItem = null;
+        DragDrop.DoDragDrop(item, new DataObject(typeof(Node), node), DragDropEffects.Move);
+        PaintDropTarget(null);
+    }
+
+    /// <summary>La carpeta de destino de soltar sobre un elemento (la suya si es una conexion); null si es la raiz.</summary>
+    private static string? TargetFolder(TreeViewItem? item) => item?.Tag is Node n ? (n.FolderPath ?? n.Connection?.Folder ?? string.Empty) : string.Empty;
+
+    private bool CanDrop(Node dragged, string target)
+    {
+        if (dragged.Connection is { } c)
+            return !string.Equals(c.Folder, target, StringComparison.OrdinalIgnoreCase);
+        if (dragged.FolderPath is { } path)
+        {
+            // Ni dentro de si misma, ni a donde ya esta.
+            var slash = path.LastIndexOf('/');
+            var parent = slash >= 0 ? path[..slash] : string.Empty;
+            return !Store.IsInside(target, path) && !string.Equals(parent, target, StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
+    }
+
+    private void OnTreeDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DragDropEffects.None;
+        e.Handled = true;
+        if (e.Data.GetData(typeof(Node)) is not Node dragged)
+            return;
+
+        var item = ItemAt(e.OriginalSource as DependencyObject);
+        // Sobre una conexion se suelta en su carpeta: se resalta la carpeta, no la conexion.
+        if (item?.Tag is Node { Connection: not null })
+            item = ItemAt(System.Windows.Media.VisualTreeHelper.GetParent(item));
+        var target = TargetFolder(item) ?? string.Empty;
+        if (CanDrop(dragged, target))
+        {
+            e.Effects = DragDropEffects.Move;
+            PaintDropTarget(item);
+        }
+        else
+        {
+            PaintDropTarget(null);
+        }
+    }
+
+    private void OnTreeDragLeave(object sender, DragEventArgs e)
+    {
+        if (!Tree.IsMouseOver)
+            PaintDropTarget(null);
+    }
+
+    private void OnTreeDrop(object sender, DragEventArgs e)
+    {
+        PaintDropTarget(null);
+        if (e.Data.GetData(typeof(Node)) is not Node dragged)
+            return;
+        e.Handled = true;
+
+        var item = ItemAt(e.OriginalSource as DependencyObject);
+        if (item?.Tag is Node { Connection: not null })
+            item = ItemAt(System.Windows.Media.VisualTreeHelper.GetParent(item));
+        var target = TargetFolder(item) ?? string.Empty;
+        if (!CanDrop(dragged, target))
+            return;
+
+        if (dragged.Connection is { } c)
+        {
+            // Si la carpeta de origen se queda sin nada, que no desaparezca del arbol.
+            var from = c.Folder;
+            c.Folder = target;
+            if (from.Length > 0 && !_store.Connections.Any(x => Store.IsInside(x.Folder, from)) && !_store.EmptyFolders.Contains(from, StringComparer.OrdinalIgnoreCase))
+                _store.EmptyFolders.Add(from);
+            _store.Save();
+            BuildTree();
+            SelectConnection(c);
+        }
+        else if (dragged.FolderPath is { } path)
+        {
+            var name = path[(path.LastIndexOf('/') + 1)..];
+            var newPath = target.Length > 0 ? $"{target}/{name}" : name;
+            _store.RenameFolder(path, newPath);
+            if (!_store.EmptyFolders.Contains(newPath, StringComparer.OrdinalIgnoreCase))
+                _store.EmptyFolders.Add(newPath);
+            _store.Save();
+            BuildTree();
+            foreach (var i in Tree.Items.OfType<TreeViewItem>().SelectMany(Flatten))
+                if (i.Tag is Node { FolderPath: { } p } && string.Equals(p, newPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    i.IsSelected = true;
+                    i.BringIntoView();
+                    break;
+                }
+        }
+    }
+
+    /// <summary>Tiñe la carpeta sobre la que se va a soltar (o la quita, con null).</summary>
+    private void PaintDropTarget(TreeViewItem? item)
+    {
+        if (ReferenceEquals(_dropTarget, item))
+            return;
+        if (_dropTarget?.Template.FindName("Bd", _dropTarget) is Border old)
+            old.ClearValue(Border.BackgroundProperty);
+        _dropTarget = item;
+        if (item?.Template.FindName("Bd", item) is Border bd)
+            bd.Background = (System.Windows.Media.Brush)FindResource("PrimaryLight");
     }
 
     private Node? Selected => (Tree.SelectedItem as TreeViewItem)?.Tag as Node;
@@ -417,24 +579,48 @@ public partial class MainWindow : Window
         var password = Secrets.Unprotect(connection.PasswordProtected);
         if (password.Length == 0 && connection.PrivateKeyPath.Length == 0)
         {
-            password = PromptWindow.AskPassword(this, Loc.Get("PasswordTitle"), Loc.Format("PasswordPrompt", connection.UserName, connection.Host)) ?? string.Empty;
+            var asked = PromptWindow.AskPassword(this, Loc.Get("PasswordTitle"), Loc.Format("PasswordPrompt", connection.UserName, connection.Host), Loc.Get("SavePassword"));
+            password = asked?.Password ?? string.Empty;
             if (password.Length == 0 && connection.Kind == ConnectionKind.Ssh)
                 return;
+
+            // Guardarla: cifrada con DPAPI para este usuario de Windows, como desde el editor.
+            if (asked is { Save: true } && password.Length > 0)
+            {
+                connection.PasswordProtected = Secrets.Protect(password);
+                _store.Save();
+            }
         }
 
         ISession session = connection.Kind == ConnectionKind.Ssh ? new SshSession(connection) : new RdpSession(connection);
 
+        var fullButton = new Button
+        {
+            Style = (Style)FindResource("GhostIconButton"),
+            Content = "",
+            Width = 24, Height = 24, FontSize = 11,
+            Margin = new Thickness(8, 0, -6, 0),
+            ToolTip = Loc.Get("FullScreenTooltip"),
+        };
         var closeButton = new Button
         {
             Style = (Style)FindResource("GhostIconButton"),
             Content = "",
             Width = 24, Height = 24, FontSize = 11,
-            Margin = new Thickness(8, 0, -4, 0),
+            Margin = new Thickness(0, 0, -4, 0),
             ToolTip = Loc.Get("DisconnectTooltip"),
         };
         var title = new TextBlock { Text = connection.Name, VerticalAlignment = VerticalAlignment.Center };
-        var header = new StackPanel { Orientation = Orientation.Horizontal, Children = { title, closeButton } };
+        var header = new StackPanel { Orientation = Orientation.Horizontal, Children = { title, fullButton, closeButton } };
         var tab = new TabItem { Header = header, Content = session.View };
+        fullButton.Click += (_, _) =>
+        {
+            Tabs.SelectedItem = tab;
+            if (session.HasNativeFullScreen)
+                session.EnterFullScreen();
+            else
+                SetFullScreen(true);
+        };
 
         var entry = (tab, session, connection);
         _open.Add(entry);
@@ -469,6 +655,133 @@ public partial class MainWindow : Window
         }
     }
 
+    // =====================================================================
+    //  Pantalla completa
+    // =====================================================================
+
+    private bool _fullScreen;
+    private WindowState _stateBeforeFullScreen;
+    private GridLength _treeWidthBeforeFullScreen;
+
+    /// <summary>
+    /// La pestaña activa a toda la pantalla: sin arbol, sin cabecera de pestañas, sin barra de
+    /// estado y sin marco de ventana. El escritorio remoto se redimensiona con SmartSizing al
+    /// tamaño nuevo. Esc o el boton flotante vuelven.
+    /// </summary>
+    private void SetFullScreen(bool on)
+    {
+        if (_fullScreen == on)
+            return;
+        _fullScreen = on;
+
+        if (on)
+        {
+            _stateBeforeFullScreen = WindowState;
+            _treeWidthBeforeFullScreen = TreeColumn.Width;
+            TreeColumn.Width = new GridLength(0);
+            TreeColumn.MinWidth = 0;
+            TreePane.Visibility = Visibility.Collapsed;
+            Splitter.Visibility = Visibility.Collapsed;
+            SplitterColumn.Width = new GridLength(0);
+            StatusBar.Visibility = Visibility.Collapsed;
+            HideTabHeaders(true);
+            FullScreenTitle.Text = Tabs.SelectedItem is TabItem t && _open.FirstOrDefault(x => ReferenceEquals(x.Tab, t)).Connection is { } c ? c.Name : string.Empty;
+            ShowFullScreenBar();
+
+            // Primero Normal y luego Maximized: si ya estaba maximizada, cambiar el estilo no
+            // vuelve a calcular el tamaño y quedaria la barra de tareas a la vista.
+            WindowState = WindowState.Normal;
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+        }
+        else
+        {
+            WindowStyle = WindowStyle.SingleBorderWindow;
+            ResizeMode = ResizeMode.CanResize;
+            WindowState = _stateBeforeFullScreen == WindowState.Maximized ? WindowState.Maximized : WindowState.Normal;
+            TreeColumn.MinWidth = 200;
+            TreeColumn.Width = _treeWidthBeforeFullScreen;
+            TreePane.Visibility = Visibility.Visible;
+            Splitter.Visibility = Visibility.Visible;
+            SplitterColumn.Width = GridLength.Auto;
+            StatusBar.Visibility = Visibility.Visible;
+            HideTabHeaders(false);
+            FullScreenBar.Visibility = Visibility.Collapsed;
+            _barTimer?.Stop();
+        }
+
+        if (Tabs.SelectedItem is TabItem current && _open.FirstOrDefault(x => ReferenceEquals(x.Tab, current)).Session is { } session)
+            Dispatcher.BeginInvoke(session.Focus, System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    private void HideTabHeaders(bool hide)
+    {
+        foreach (TabItem item in Tabs.Items)
+            item.Visibility = hide && !ReferenceEquals(item, Tabs.SelectedItem) ? Visibility.Collapsed : Visibility.Visible;
+        if (Tabs.SelectedItem is TabItem selected)
+            selected.Visibility = Visibility.Visible;
+        // La cabecera de la pestaña visible se encoge a nada: el contenido ocupa todo.
+        if (Tabs.SelectedItem is TabItem s)
+            s.Height = hide ? 0 : double.NaN;
+    }
+
+    private void OnToggleFullScreenClick(object sender, RoutedEventArgs e) => SetFullScreen(!_fullScreen);
+
+    private void OnFullScreenCloseClick(object sender, RoutedEventArgs e)
+    {
+        if (Tabs.SelectedItem is TabItem tab)
+            CloseTab(tab);
+    }
+
+    // La barra se enseña al entrar y al llevar el raton al borde de arriba; se esconde sola a los
+    // dos segundos de que el raton la deje.
+    private System.Windows.Threading.DispatcherTimer? _barTimer;
+    private bool _mouseOnBar;
+
+    private void ShowFullScreenBar()
+    {
+        FullScreenBar.Visibility = Visibility.Visible;
+        _barTimer ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _barTimer.Tick -= HideFullScreenBar;
+        _barTimer.Tick += HideFullScreenBar;
+        _barTimer.Stop();
+        _barTimer.Start();
+    }
+
+    private void HideFullScreenBar(object? sender, EventArgs e)
+    {
+        _barTimer?.Stop();
+        if (!_mouseOnBar)
+            FullScreenBar.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnFullScreenBarEnter(object sender, MouseEventArgs e) { _mouseOnBar = true; _barTimer?.Stop(); }
+
+    private void OnFullScreenBarLeave(object sender, MouseEventArgs e) { _mouseOnBar = false; ShowFullScreenBar(); }
+
+    protected override void OnPreviewMouseMove(MouseEventArgs e)
+    {
+        base.OnPreviewMouseMove(e);
+        if (_fullScreen && e.GetPosition(this).Y <= 3 && FullScreenBar.Visibility != Visibility.Visible)
+            ShowFullScreenBar();
+    }
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        base.OnPreviewKeyDown(e);
+        if (e.Key == Key.Escape && _fullScreen && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        {
+            SetFullScreen(false);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F11)
+        {
+            SetFullScreen(!_fullScreen);
+            e.Handled = true;
+        }
+    }
+
     private void CloseTab(TabItem tab)
     {
         var index = _open.FindIndex(x => ReferenceEquals(x.Tab, tab));
@@ -480,6 +793,8 @@ public partial class MainWindow : Window
         session.Disconnect();
         Tabs.Items.Remove(tab);
         EmptyTabs.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (Tabs.Items.Count == 0 && _fullScreen)
+            SetFullScreen(false);
     }
 
     private void OnTabChanged(object sender, SelectionChangedEventArgs e)

@@ -140,6 +140,18 @@ public sealed class SshSession : ISession
 
     public void Focus() => _terminal.Focus();
 
+    public bool HasNativeFullScreen => false;
+
+    public void EnterFullScreen()
+    {
+    }
+
+    public event Action? LeftFullScreen
+    {
+        add { }
+        remove { }
+    }
+
     public void Disconnect()
     {
         _reader?.Cancel();
