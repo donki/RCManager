@@ -1,0 +1,207 @@
+using System.Globalization;
+using System.Windows.Markup;
+
+namespace Connections.Localization;
+
+/// <summary>
+/// Textos de la aplicacion en español e ingles (constitucion, seccion 7). Ningun texto va en el
+/// XAML ni en el codigo: todo pasa por aqui.
+/// </summary>
+public static class Loc
+{
+    private static readonly Dictionary<string, string> English = new()
+    {
+        ["AppTitle"] = "sOC Connections",
+        ["AboutTitle"] = "About",
+        ["AboutTooltip"] = "About",
+        ["AboutDescription"] = "Your RDP and SSH connections in one place: a tree of servers, and each session in a tab.",
+        ["Publisher"] = "Socratic",
+        ["Contact"] = "Contact",
+        ["WriteAuthor"] = "Write to the author",
+        ["ContactHint"] = "Suggestions, bugs and ideas: all of it gets read.",
+        ["LanguageTitle"] = "Language",
+        ["LanguageHint"] = "The language applies right away.",
+        ["Privacy"] = "Privacy",
+        ["PrivacyText"] = "Connections are stored on this PC only, in your user profile; passwords are encrypted with Windows (DPAPI) for your account. Sessions go straight from this PC to your servers. Nothing goes anywhere else. No ads, no trackers, no analytics.",
+        ["License"] = "License",
+        ["LicenseText"] = "Free software under the MIT licence. SSH.NET (MIT) and the rest of third-party components are listed in THIRD-PARTY-NOTICES.md. The Remote Desktop control is the one built into Windows.",
+        ["LicenseLine"] = "MIT License · Copyright © 2026 Socratic",
+        ["LegalTitle"] = "Legal notice",
+        ["LegalText1"] = "This software is provided \"as is\", without warranty of any kind, express or implied.",
+        ["LegalText2"] = "In no event shall the authors be liable for any claim, damages or other liability arising from the use of this software.",
+        ["WarningText"] = "⚠️ Use at your own risk",
+        ["Close"] = "Close",
+        ["LanguageTooltip"] = "Español / English",
+
+        ["SearchHint"] = "Search…",
+        ["NewFolderTooltip"] = "New folder",
+        ["NewConnectionTooltip"] = "New connection",
+        ["EditTooltip"] = "Edit",
+        ["DuplicateTooltip"] = "Duplicate",
+        ["DeleteTooltip"] = "Delete",
+        ["ConnectTooltip"] = "Connect",
+        ["DisconnectTooltip"] = "Disconnect this tab",
+        ["OpenFileTooltip"] = "Open the connections file folder",
+        ["EmptyTree"] = "No connections yet. Add one with + and it will show up here.",
+        ["EmptyTabs"] = "Double-click a connection, or select it and press Connect. Each session opens in its own tab.",
+        ["Ready"] = "Ready",
+        ["Connecting"] = "Connecting to {0}…",
+        ["Connected"] = "Connected to {0}.",
+        ["ConnectFailed"] = "Could not connect to {0}: {1}",
+        ["SessionEnded"] = "{0}: session ended ({1})",
+        ["SessionClosed"] = "{0}: session closed",
+        ["DeleteConnectionConfirm"] = "Delete \"{0}\"?",
+        ["DeleteFolderConfirm"] = "Delete folder \"{0}\" and the {1} connections inside?",
+        ["Delete"] = "Delete",
+        ["Cancel"] = "Cancel",
+        ["FolderName"] = "Folder name",
+        ["NewFolder"] = "New folder",
+        ["RenameFolderTooltip"] = "Rename folder",
+        ["PasswordPrompt"] = "Password for {0}@{1}",
+        ["PasswordTitle"] = "Password",
+        ["Unnamed"] = "(unnamed)",
+
+        ["EditTitle"] = "Connection",
+        ["Name"] = "Name",
+        ["Kind"] = "Type",
+        ["Folder"] = "Folder",
+        ["Host"] = "Host",
+        ["Port"] = "Port",
+        ["UserName"] = "User",
+        ["Password"] = "Password",
+        ["PasswordHint"] = "Leave empty to be asked when connecting.",
+        ["Domain"] = "Domain",
+        ["PrivateKey"] = "Private key (file)",
+        ["PrivateKeyHint"] = "OpenSSH or PEM file. If set, the password is the key passphrase.",
+        ["BrowseTooltip"] = "Choose file",
+        ["Notes"] = "Notes",
+        ["RdpSmartSizing"] = "Fit the desktop to the tab",
+        ["RdpClipboard"] = "Share the clipboard",
+        ["Save"] = "Save",
+        ["NameRequired"] = "The name and the host are required.",
+
+        ["SshNoCredentials"] = "No password or private key to sign in with.",
+        ["RdpDnsError"] = "the server name could not be resolved",
+        ["RdpNoConnection"] = "the server is not answering",
+        ["RdpSocketClosed"] = "the connection was closed by the server",
+        ["RdpAuthFailed"] = "authentication failed",
+        ["RdpDisconnected"] = "disconnected (code {0})",
+    };
+
+    private static readonly Dictionary<string, string> Spanish = new()
+    {
+        ["AppTitle"] = "sOC Connections",
+        ["AboutTitle"] = "Acerca de",
+        ["AboutTooltip"] = "Acerca de",
+        ["AboutDescription"] = "Tus conexiones RDP y SSH en un sitio: un árbol de servidores, y cada sesión en su pestaña.",
+        ["Publisher"] = "Socratic",
+        ["Contact"] = "Contacto",
+        ["WriteAuthor"] = "Escribir al autor",
+        ["ContactHint"] = "Sugerencias, fallos e ideas: se lee todo.",
+        ["LanguageTitle"] = "Idioma",
+        ["LanguageHint"] = "El idioma se aplica al momento.",
+        ["Privacy"] = "Privacidad",
+        ["PrivacyText"] = "Las conexiones se guardan solo en este PC, en tu perfil de usuario; las contraseñas van cifradas por Windows (DPAPI) para tu cuenta. Las sesiones van directas de este PC a tus servidores. Nada sale a ningún otro sitio. Sin anuncios, sin rastreadores, sin analítica.",
+        ["License"] = "Licencia",
+        ["LicenseText"] = "Software libre con licencia MIT. SSH.NET (MIT) y el resto de componentes de terceros están en THIRD-PARTY-NOTICES.md. El control de Escritorio remoto es el que trae Windows.",
+        ["LicenseLine"] = "Licencia MIT · Copyright © 2026 Socratic",
+        ["LegalTitle"] = "Aviso legal",
+        ["LegalText1"] = "Este software se proporciona «tal cual», sin garantía de ningún tipo, expresa o implícita.",
+        ["LegalText2"] = "En ningún caso los autores serán responsables de reclamaciones, daños u otras responsabilidades derivadas del uso de este software.",
+        ["WarningText"] = "⚠️ Úsalo bajo tu responsabilidad",
+        ["Close"] = "Cerrar",
+        ["LanguageTooltip"] = "Español / English",
+
+        ["SearchHint"] = "Buscar…",
+        ["NewFolderTooltip"] = "Carpeta nueva",
+        ["NewConnectionTooltip"] = "Conexión nueva",
+        ["EditTooltip"] = "Editar",
+        ["DuplicateTooltip"] = "Duplicar",
+        ["DeleteTooltip"] = "Borrar",
+        ["ConnectTooltip"] = "Conectar",
+        ["DisconnectTooltip"] = "Desconectar esta pestaña",
+        ["OpenFileTooltip"] = "Abrir la carpeta del fichero de conexiones",
+        ["EmptyTree"] = "Todavía no hay conexiones. Añade una con + y aparecerá aquí.",
+        ["EmptyTabs"] = "Haz doble clic en una conexión, o selecciónala y pulsa Conectar. Cada sesión se abre en su pestaña.",
+        ["Ready"] = "Listo",
+        ["Connecting"] = "Conectando con {0}…",
+        ["Connected"] = "Conectado con {0}.",
+        ["ConnectFailed"] = "No se ha podido conectar con {0}: {1}",
+        ["SessionEnded"] = "{0}: sesión terminada ({1})",
+        ["SessionClosed"] = "{0}: sesión cerrada",
+        ["DeleteConnectionConfirm"] = "¿Borrar «{0}»?",
+        ["DeleteFolderConfirm"] = "¿Borrar la carpeta «{0}» y las {1} conexiones que tiene dentro?",
+        ["Delete"] = "Borrar",
+        ["Cancel"] = "Cancelar",
+        ["FolderName"] = "Nombre de la carpeta",
+        ["NewFolder"] = "Carpeta nueva",
+        ["RenameFolderTooltip"] = "Renombrar la carpeta",
+        ["PasswordPrompt"] = "Contraseña de {0}@{1}",
+        ["PasswordTitle"] = "Contraseña",
+        ["Unnamed"] = "(sin nombre)",
+
+        ["EditTitle"] = "Conexión",
+        ["Name"] = "Nombre",
+        ["Kind"] = "Tipo",
+        ["Folder"] = "Carpeta",
+        ["Host"] = "Servidor",
+        ["Port"] = "Puerto",
+        ["UserName"] = "Usuario",
+        ["Password"] = "Contraseña",
+        ["PasswordHint"] = "Déjala vacía para que se pida al conectar.",
+        ["Domain"] = "Dominio",
+        ["PrivateKey"] = "Clave privada (fichero)",
+        ["PrivateKeyHint"] = "Fichero OpenSSH o PEM. Si se pone, la contraseña es la de la clave.",
+        ["BrowseTooltip"] = "Elegir fichero",
+        ["Notes"] = "Notas",
+        ["RdpSmartSizing"] = "Ajustar el escritorio a la pestaña",
+        ["RdpClipboard"] = "Compartir el portapapeles",
+        ["Save"] = "Guardar",
+        ["NameRequired"] = "El nombre y el servidor son obligatorios.",
+
+        ["SshNoCredentials"] = "No hay contraseña ni clave privada con la que entrar.",
+        ["RdpDnsError"] = "no se ha podido resolver el nombre del servidor",
+        ["RdpNoConnection"] = "el servidor no responde",
+        ["RdpSocketClosed"] = "el servidor ha cerrado la conexión",
+        ["RdpAuthFailed"] = "la autenticación ha fallado",
+        ["RdpDisconnected"] = "desconectado (código {0})",
+    };
+
+    public static string Language { get; private set; } =
+        CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "es" ? "es" : "en";
+
+    public static event Action? LanguageChanged;
+
+    public static void Toggle()
+    {
+        Language = Language == "es" ? "en" : "es";
+        LanguageChanged?.Invoke();
+    }
+
+    public static string Get(string key)
+    {
+        var table = Language == "es" ? Spanish : English;
+        return table.TryGetValue(key, out var value) ? value
+            : English.TryGetValue(key, out var fallback) ? fallback
+            : string.Empty;
+    }
+
+    public static string Format(string key, params object[] args) =>
+        string.Format(CultureInfo.CurrentCulture, Get(key), args);
+}
+
+/// <summary><c>{loc:T Clave}</c> en el XAML.</summary>
+[MarkupExtensionReturnType(typeof(string))]
+public sealed class TExtension : MarkupExtension
+{
+    public TExtension()
+    {
+    }
+
+    public TExtension(string key) => Key = key;
+
+    [ConstructorArgument("key")]
+    public string Key { get; set; } = string.Empty;
+
+    public override object ProvideValue(IServiceProvider serviceProvider) => Loc.Get(Key);
+}

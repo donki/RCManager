@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- El control RDP es ActiveX y se aloja con WindowsFormsHost; los usings implicitos de
+         WinForms y System.Drawing se quitan porque chocan con WPF (Application, Color...). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Connections</RootNamespace>
+    <AssemblyName>sOCConnections</AssemblyName>
+    <ApplicationTitle>sOC Connections</ApplicationTitle>
+    <Version>2026.9.14.0</Version>
+    <AssemblyVersion>2026.9.14.0</AssemblyVersion>
+    <FileVersion>2026.9.14.0</FileVersion>
+    <Product>sOC Connections</Product>
+    <Company>Socratic</Company>
+    <Copyright>Copyright © 2026 Socratic</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <ApplicationIcon>appicon.ico</ApplicationIcon>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Interop del control RDP de Windows (mstscax.dll), generado con aximp del SDK de .NET Framework
+      (MSBuild de .NET Core no resuelve COMReference; ver tools/generar-interop.ps1). Es codigo
+      generado a partir de una biblioteca del propio sistema: no redistribuye nada de Microsoft y el
+      control real es el mstscax.dll de cada Windows.
+    -->
+    <Reference Include="MSTSCLib">
+      <HintPath>Interop\MSTSCLib.dll</HintPath>
+    </Reference>
+    <Reference Include="AxMSTSCLib">
+      <HintPath>Interop\AxMSTSCLib.dll</HintPath>
+    </Reference>
+
+    <!-- SSH (MIT). -->
+    <PackageReference Include="SSH.NET" Version="2025.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\logo.png" />
+  </ItemGroup>
+
+</Project>

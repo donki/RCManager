@@ -1,0 +1,109 @@
+<Window x:Class="Connections.ConnectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Connections.Localization"
+        Title="{loc:T EditTitle}"
+        Width="520" SizeToContent="Height"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PageBackground}">
+
+    <StackPanel Margin="16">
+        <Border Style="{StaticResource Card}" Padding="18,12,18,16">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="150" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{loc:T Name}" Style="{StaticResource FieldLabel}" />
+                        <TextBox x:Name="NameBox" Style="{StaticResource Field}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="{loc:T Kind}" Style="{StaticResource FieldLabel}" />
+                        <ComboBox x:Name="KindBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34"
+                                  SelectionChanged="OnKindChanged">
+                            <ComboBoxItem Content="RDP" />
+                            <ComboBoxItem Content="SSH" />
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="{loc:T Folder}" Style="{StaticResource FieldLabel}" />
+                <ComboBox x:Name="FolderBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34" IsEditable="True" />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="110" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{loc:T Host}" Style="{StaticResource FieldLabel}" />
+                        <TextBox x:Name="HostBox" Style="{StaticResource Field}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="{loc:T Port}" Style="{StaticResource FieldLabel}" />
+                        <TextBox x:Name="PortBox" Style="{StaticResource Field}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{loc:T UserName}" Style="{StaticResource FieldLabel}" />
+                        <TextBox x:Name="UserBox" Style="{StaticResource Field}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" x:Name="DomainPanel">
+                        <TextBlock Text="{loc:T Domain}" Style="{StaticResource FieldLabel}" />
+                        <TextBox x:Name="DomainBox" Style="{StaticResource Field}" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="{loc:T Password}" Style="{StaticResource FieldLabel}" />
+                <PasswordBox x:Name="PasswordBox" Style="{StaticResource PasswordField}" />
+                <TextBlock Text="{loc:T PasswordHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" />
+
+                <StackPanel x:Name="SshPanel">
+                    <TextBlock Text="{loc:T PrivateKey}" Style="{StaticResource FieldLabel}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="KeyBox" Grid.Column="0" Style="{StaticResource Field}" />
+                        <Button x:Name="BrowseButton" Grid.Column="1" Style="{StaticResource GhostIconButton}" Content="&#xE8E5;"
+                                ToolTip="{loc:T BrowseTooltip}" Click="OnBrowseClick" />
+                    </Grid>
+                    <TextBlock Text="{loc:T PrivateKeyHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" />
+                </StackPanel>
+
+                <StackPanel x:Name="RdpPanel">
+                    <CheckBox x:Name="SmartSizingBox" Style="{StaticResource Check}" Content="{loc:T RdpSmartSizing}" Margin="0,14,0,0" />
+                    <CheckBox x:Name="ClipboardBox" Style="{StaticResource Check}" Content="{loc:T RdpClipboard}" />
+                </StackPanel>
+
+                <TextBlock Text="{loc:T Notes}" Style="{StaticResource FieldLabel}" />
+                <TextBox x:Name="NotesBox" Style="{StaticResource Field}" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalContentAlignment="Top" Padding="8,6" />
+            </StackPanel>
+        </Border>
+
+        <Grid Margin="0,12,0,0">
+            <TextBlock x:Name="StatusText" Style="{StaticResource HintText}" VerticalAlignment="Center"
+                       Foreground="{DynamicResource Danger}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="CancelButton" Style="{StaticResource GhostIconButton}" Content="&#xE711;"
+                        ToolTip="{loc:T Cancel}" Click="OnCancelClick" />
+                <Button x:Name="SaveButton" Style="{StaticResource IconButton}" Content="&#xE74E;"
+                        ToolTip="{loc:T Save}" Click="OnSaveClick" IsDefault="True" />
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</Window>
