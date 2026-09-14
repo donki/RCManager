@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    Identificadores de los clientes OAuth (Google Drive y OneDrive). Los valores reales NO viven en
+    el repositorio: se leen de oauth.local.props (ignorado) o de variables de entorno, y de ahi se
+    genera una clase de constantes en obj/. Sin valores, la compilacion no se rompe: el proveedor
+    sencillamente no se ofrece en los ajustes.
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)oauth.local.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)oauth.local.props')" />
+
+  <PropertyGroup>
+    <RcMicrosoftClientId Condition="'$(RcMicrosoftClientId)' == ''">$(RC_MS_CLIENT_ID)</RcMicrosoftClientId>
+    <RcGoogleClientId Condition="'$(RcGoogleClientId)' == ''">$(RC_GOOGLE_CLIENT_ID)</RcGoogleClientId>
+    <RcGoogleClientSecret Condition="'$(RcGoogleClientSecret)' == ''">$(RC_GOOGLE_CLIENT_SECRET)</RcGoogleClientSecret>
+  </PropertyGroup>
+
+  <!-- Se rehace siempre (WriteOnlyWhenDifferent): cambiar un identificador no invalidaba nada
+       con Inputs/Outputs y se seguia compilando con el anterior (leccion de Task Manager). -->
+  <Target Name="GenerateOAuthSecrets" BeforeTargets="BeforeCompile;CoreCompile">
+    <ItemGroup>
+      <RcOAuthLine Include="// Generado por oauth.props. No editar ni subir al repositorio." />
+      <RcOAuthLine Include="namespace SocRcManager.Services%3B" />
+      <RcOAuthLine Include="public static class OAuthSecrets" />
+      <RcOAuthLine Include="{" />
+      <RcOAuthLine Include="    public const string MicrosoftClientId = &quot;$(RcMicrosoftClientId)&quot;%3B" />
+      <RcOAuthLine Include="    public const string GoogleClientId = &quot;$(RcGoogleClientId)&quot;%3B" />
+      <RcOAuthLine Include="    public const string GoogleClientSecret = &quot;$(RcGoogleClientSecret)&quot;%3B" />
+      <RcOAuthLine Include="}" />
+    </ItemGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)OAuthSecrets.g.cs" Lines="@(RcOAuthLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)OAuthSecrets.g.cs" />
+    </ItemGroup>
+  </Target>
+</Project>

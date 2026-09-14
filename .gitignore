@@ -5,3 +5,6 @@ obj/
 
 # Exportaciones de Remote Desktop Manager para probar la importacion: datos privados
 *.rdm
+
+# Identificadores OAuth reales (constitucion, seccion 4)
+oauth.local.props

@@ -49,6 +49,8 @@
                     <Button x:Name="ConnectButton" Style="{StaticResource IconButton}" Content="&#xE8AF;"
                             ToolTip="{loc:T ConnectTooltip}" Click="OnConnectClick" HorizontalAlignment="Left" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="SettingsButton" Style="{StaticResource GhostIconButton}" Content="&#xE713;"
+                                ToolTip="{loc:T SettingsTooltip}" Click="OnSettingsClick" />
                         <Button x:Name="OpenFileButton" Style="{StaticResource GhostIconButton}" Content="&#xE8B7;"
                                 ToolTip="{loc:T OpenFileTooltip}" Click="OnOpenFileClick" />
                         <Button x:Name="LanguageButton" Style="{StaticResource GhostIconButton}" Content="&#xE8C1;"

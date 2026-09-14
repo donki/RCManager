@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SocRcManager.Models;
@@ -35,6 +35,12 @@ public sealed class Store
     /// <summary>Carpetas sin ninguna conexion dentro, que si no se perderian al guardar.</summary>
     public List<string> EmptyFolders { get; private set; } = [];
 
+    /// <summary>Cuando se guardo por ultima vez: es lo que decide quien gana entre lo local y la nube.</summary>
+    public DateTimeOffset ModifiedAt { get; private set; }
+
+    /// <summary>Se acaba de guardar algo (para subirlo a la nube si toca).</summary>
+    public event Action? Saved;
+
     public static string Location => FilePath;
 
     public void Load()
@@ -47,6 +53,8 @@ public sealed class Store
             var data = JsonSerializer.Deserialize<FileData>(File.ReadAllText(FilePath), Json);
             Connections = data?.Connections ?? [];
             EmptyFolders = data?.EmptyFolders ?? [];
+            // Ficheros de antes de llevar fecha: vale la del propio fichero.
+            ModifiedAt = data is { ModifiedAt: var m } && m != default ? m : File.GetLastWriteTimeUtc(FilePath);
         }
         catch (Exception)
         {
@@ -65,8 +73,61 @@ public sealed class Store
         var used = new HashSet<string>(Connections.Select(c => c.Folder).Where(f => f.Length > 0), StringComparer.OrdinalIgnoreCase);
         EmptyFolders = EmptyFolders.Where(f => f.Length > 0 && !used.Contains(f)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
+        ModifiedAt = DateTimeOffset.UtcNow;
         var temp = FilePath + ".tmp";
-        File.WriteAllText(temp, JsonSerializer.Serialize(new FileData { Connections = Connections, EmptyFolders = EmptyFolders }, Json));
+        File.WriteAllText(temp, JsonSerializer.Serialize(new FileData { Connections = Connections, EmptyFolders = EmptyFolders, ModifiedAt = ModifiedAt }, Json));
+        if (File.Exists(FilePath))
+            File.Copy(FilePath, FilePath[..^5] + ".bak", overwrite: true);
+        File.Move(temp, FilePath, overwrite: true);
+        Saved?.Invoke();
+    }
+
+    // -----------------------------------------------------------------------
+    //  Ida y vuelta a la nube
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Todo el almacen en un JSON <b>portable</b>: las contraseñas van en claro dentro, porque las
+    /// protegidas con DPAPI no valdrian en otro equipo. Solo se usa como contenido a cifrar con la
+    /// frase del usuario (<see cref="Vault"/>) antes de subirlo; en claro no sale de aqui.
+    /// </summary>
+    public string ExportPortable()
+    {
+        var copies = Connections.Select(c =>
+        {
+            var copy = c.Clone();
+            copy.PasswordProtected = Secrets.Unprotect(c.PasswordProtected);
+            return copy;
+        }).ToList();
+        return JsonSerializer.Serialize(new FileData { Connections = copies, EmptyFolders = EmptyFolders, ModifiedAt = ModifiedAt }, Json);
+    }
+
+    /// <summary>Fecha de un JSON portable sin cargarlo entero.</summary>
+    public static DateTimeOffset ModifiedAtOf(string portableJson)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<FileData>(portableJson, Json)?.ModifiedAt ?? DateTimeOffset.MinValue;
+        }
+        catch (Exception)
+        {
+            return DateTimeOffset.MinValue;
+        }
+    }
+
+    /// <summary>Sustituye lo local por lo que viene de la nube, volviendo a proteger las contraseñas con DPAPI.</summary>
+    public void ImportPortable(string portableJson)
+    {
+        var data = JsonSerializer.Deserialize<FileData>(portableJson, Json) ?? new FileData();
+        foreach (var c in data.Connections)
+            c.PasswordProtected = Secrets.Protect(c.PasswordProtected);
+        Connections = data.Connections;
+        EmptyFolders = data.EmptyFolders;
+
+        Directory.CreateDirectory(Folder);
+        ModifiedAt = data.ModifiedAt;
+        var temp = FilePath + ".tmp";
+        File.WriteAllText(temp, JsonSerializer.Serialize(new FileData { Connections = Connections, EmptyFolders = EmptyFolders, ModifiedAt = ModifiedAt }, Json));
         if (File.Exists(FilePath))
             File.Copy(FilePath, FilePath[..^5] + ".bak", overwrite: true);
         File.Move(temp, FilePath, overwrite: true);
@@ -113,5 +174,6 @@ public sealed class Store
     {
         public List<Connection> Connections { get; set; } = [];
         public List<string> EmptyFolders { get; set; } = [];
+        public DateTimeOffset ModifiedAt { get; set; }
     }
 }

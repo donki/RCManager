@@ -21,6 +21,14 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   botón derecho: pega si no hay selección y copia si la hay). El shell se redimensiona con la
   ventana. Se entra con contraseña o con clave privada (OpenSSH/PEM, con o sin frase).
 - Si una conexión no tiene contraseña guardada, se pide al conectar y no se guarda.
+- **Importar desde Remote Desktop Manager**: botón ⇥ de la barra del árbol; lee un `.rdm` exportado
+  y conserva sus carpetas. Las contraseñas de RDM no se importan (van cifradas con su clave).
+- **Dónde se guardan** (Ajustes ⚙): en este PC, o en Google Drive / OneDrive entrando con tu cuenta.
+  En la nube el fichero va a la carpeta privada de la aplicación (ámbitos `drive.appdata` /
+  `Files.ReadWrite.AppFolder`: sin acceso al resto de tus ficheros) y **cifrado con una frase que
+  solo tú conoces** (AES-256-GCM con clave derivada por PBKDF2). La frase se guarda en este PC
+  protegida por DPAPI; en otro PC hay que escribir la misma. Sin frase no se sube nada. Al arrancar
+  se baja la copia de la nube si es más reciente; cada guardado se sube. Gana el último que guarda.
 - Español e inglés (se cambia al momento), tema claro/oscuro siguiendo al de Windows, «Acerca de»
   canónico del catálogo.
 
@@ -33,6 +41,15 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   copiado a otro equipo o leído por otra cuenta no las revela. No hay contraseña maestra.
 - Solo habla con los servidores que el usuario da de alta. Nada sale a ningún otro sitio: sin
   cuenta, sin telemetría, sin anuncios.
+
+## Identificadores OAuth
+
+Los clientes OAuth de Google y de Microsoft no van en el repositorio: se leen de
+`oauth.local.props` (ignorado; ver `oauth.props`) o de las variables `RC_GOOGLE_CLIENT_ID`,
+`RC_GOOGLE_CLIENT_SECRET` y `RC_MS_CLIENT_ID`. Sin ellos la aplicación compila igual y las opciones
+de nube aparecen desactivadas. Hoy se usan los mismos clientes que Task Manager (misma cuenta de
+desarrollador): la pantalla de consentimiento dice «TaskManager» hasta que se den de alta clientes
+propios.
 
 ## Compilar
 
@@ -56,5 +73,5 @@ dentro (se pide confirmación y queda el `.bak`).
 - Probar RDP contra un servidor real (el control de Windows no deja conectar con el propio equipo,
   y en la red de desarrollo no había otro).
 - Arrastrar conexiones entre carpetas.
-- Importar desde `.rdp` y desde otros gestores.
+- Importar desde `.rdp` y desde otros gestores (RDM ya está).
 - Paquete MSIX y ficha de Microsoft Store.

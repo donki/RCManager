@@ -1,0 +1,78 @@
+<Window x:Class="SocRcManager.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:SocRcManager.Localization"
+        Title="{loc:T SettingsTitle}"
+        Width="520" SizeToContent="Height"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PageBackground}">
+
+    <StackPanel Margin="16">
+
+        <!-- Donde se guardan las conexiones -->
+        <Border Style="{StaticResource Card}" Padding="18,14,18,16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="{loc:T StorageTitle}" Style="{StaticResource CardTitle}" />
+                <TextBlock Text="{loc:T StorageIntro}" Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,4,0,10" />
+
+                <!-- Tres opciones excluyentes con icono (constitucion 6): la elegida va rellena. -->
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="LocalButton" Style="{StaticResource OutlineButton}" Click="OnLocalClick"
+                            ToolTip="{loc:T StorageLocalHint}" Margin="0,0,8,0" Padding="14,8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7F8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="{loc:T StorageLocal}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="GoogleButton" Style="{StaticResource OutlineButton}" Click="OnGoogleClick"
+                            ToolTip="{loc:T StorageGoogleHint}" Margin="0,0,8,0" Padding="14,8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE753;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="Google Drive" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="OneDriveButton" Style="{StaticResource OutlineButton}" Click="OnOneDriveClick"
+                            ToolTip="{loc:T StorageOneDriveHint}" Padding="14,8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE753;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="OneDrive" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <TextBlock x:Name="AccountText" Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,10,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Frase de cifrado (solo con nube) -->
+        <Border x:Name="PassphraseCard" Style="{StaticResource Card}" Padding="18,14,18,16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="{loc:T PassphraseTitle}" Style="{StaticResource CardTitle}" />
+                <TextBlock Text="{loc:T PassphraseIntro}" Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <PasswordBox x:Name="PassphraseBox" Grid.Column="0" Style="{StaticResource PasswordField}" />
+                    <Button x:Name="SavePassphraseButton" Grid.Column="1" Style="{StaticResource IconButton}" Content="&#xE72E;"
+                            ToolTip="{loc:T PassphraseSaveTooltip}" Click="OnSavePassphraseClick" Margin="8,0,0,0" />
+                    <Button x:Name="SyncButton" Grid.Column="2" Style="{StaticResource GhostIconButton}" Content="&#xE895;"
+                            ToolTip="{loc:T SyncNowTooltip}" Click="OnSyncClick" />
+                </Grid>
+                <TextBlock x:Name="PassphraseState" Style="{StaticResource HintText}" Margin="0,6,0,0" />
+            </StackPanel>
+        </Border>
+
+        <ProgressBar x:Name="Busy" Height="3" IsIndeterminate="True" Visibility="Collapsed"
+                     Foreground="{DynamicResource Primary}" Background="Transparent" BorderThickness="0" />
+
+        <Grid Margin="0,10,0,0">
+            <TextBlock x:Name="StatusText" Style="{StaticResource HintText}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,48,0" />
+            <Button x:Name="CloseButton" Style="{StaticResource GhostIconButton}" Content="&#xE711;"
+                    ToolTip="{loc:T Close}" HorizontalAlignment="Right" Click="OnCloseClick" />
+        </Grid>
+    </StackPanel>
+</Window>

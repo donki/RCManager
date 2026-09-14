@@ -21,6 +21,8 @@ namespace SocRcManager;
 public partial class MainWindow : Window
 {
     private readonly Store _store = new();
+    private readonly AppSettings _settings = AppSettings.Load();
+    private readonly CloudSync _sync;
     private readonly List<(TabItem Tab, ISession Session, Connection Connection)> _open = [];
 
     public MainWindow()
@@ -33,10 +35,32 @@ public partial class MainWindow : Window
 
         _store.Load();
         BuildTree();
+
+        // Con la nube elegida, al arrancar se baja lo que haya (si es mas nuevo) y cada guardado
+        // se sube detras. Todo cifrado con la frase del usuario (CloudSync).
+        _sync = new CloudSync(_settings, _store);
+        _sync.Status += s => Dispatcher.BeginInvoke(() => SetStatus(s));
+        _sync.Replaced += () => Dispatcher.BeginInvoke(BuildTree);
+        Loaded += async (_, _) =>
+        {
+            if (!_sync.IsCloud)
+                return;
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+                await _sync.SyncAsync(cts.Token);
+            }
+            catch (Exception ex)
+            {
+                SetStatus(Loc.Format("CloudFailed", ex.Message));
+            }
+        };
+
         Closing += (_, _) =>
         {
             foreach (var (_, session, _) in _open.ToList())
                 session.Disconnect();
+            _sync.Dispose();
         };
     }
 
@@ -50,6 +74,7 @@ public partial class MainWindow : Window
         DeleteButton.ToolTip = Loc.Get("DeleteTooltip");
         ImportButton.ToolTip = Loc.Get("ImportTooltip");
         ConnectButton.ToolTip = Loc.Get("ConnectTooltip");
+        SettingsButton.ToolTip = Loc.Get("SettingsTooltip");
         OpenFileButton.ToolTip = Loc.Get("OpenFileTooltip");
         LanguageButton.ToolTip = Loc.Get("LanguageTooltip");
         AboutButton.ToolTip = Loc.Get("AboutTooltip");
@@ -472,4 +497,12 @@ public partial class MainWindow : Window
     }
 
     private void OnAboutClick(object sender, RoutedEventArgs e) => new AboutWindow { Owner = this }.ShowDialog();
+
+    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SettingsWindow(_settings, _sync) { Owner = this };
+        dialog.ShowDialog();
+        if (dialog.LocalReplaced)
+            BuildTree();
+    }
 }
