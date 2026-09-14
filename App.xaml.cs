@@ -1,7 +1,7 @@
 using System.Windows;
-using Connections.Services;
+using SocRcManager.Services;
 
-namespace Connections;
+namespace SocRcManager;
 
 public partial class App : Application
 {

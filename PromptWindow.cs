@@ -1,10 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Connections.Localization;
-using Connections.Services;
+using SocRcManager.Localization;
+using SocRcManager.Services;
 
-namespace Connections;
+namespace SocRcManager;
 
 /// <summary>
 /// Los tres dialogos pequeños —una linea de texto, una contraseña y una confirmacion— con el

@@ -1,15 +1,15 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Connections.Models;
+using SocRcManager.Models;
 
-namespace Connections.Services;
+namespace SocRcManager.Services;
 
 /// <summary>
 /// Las conexiones y las carpetas, en un JSON del perfil del usuario.
 /// </summary>
 /// <remarks>
-/// <para><c>%LOCALAPPDATA%\sOCConnections\connections.json</c>. Es un fichero legible a proposito
+/// <para><c>%LOCALAPPDATA%\sOCRCManager\connections.json</c>. Es un fichero legible a proposito
 /// —salvo las contraseñas, que van cifradas (<see cref="Secrets"/>)— para que se pueda copiar,
 /// versionar o arreglar a mano. Se escribe entero en cada cambio, primero a un temporal y luego se
 /// sustituye: un corte a media escritura no puede dejar el fichero a trozos.</para>
@@ -20,7 +20,7 @@ namespace Connections.Services;
 public sealed class Store
 {
     private static readonly string Folder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sOCConnections");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sOCRCManager");
 
     private static readonly string FilePath = Path.Combine(Folder, "connections.json");
 

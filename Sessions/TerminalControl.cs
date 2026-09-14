@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 
-namespace Connections.Sessions;
+namespace SocRcManager.Sessions;
 
 /// <summary>
 /// Un terminal de texto: emula lo justo de VT100/xterm para que un shell de Linux se vea bien

@@ -2,3 +2,6 @@ bin/
 obj/
 *.user
 .vs/
+
+# Exportaciones de Remote Desktop Manager para probar la importacion: datos privados
+*.rdm

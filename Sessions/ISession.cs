@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace Connections.Sessions;
+namespace SocRcManager.Sessions;
 
 /// <summary>Lo que una pestaña sabe hacer, sea RDP o SSH.</summary>
 public interface ISession

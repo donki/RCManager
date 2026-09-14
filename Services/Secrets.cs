@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Connections.Services;
+namespace SocRcManager.Services;
 
 /// <summary>
 /// Contraseñas cifradas con DPAPI, ligadas al usuario de Windows.
@@ -18,7 +18,7 @@ namespace Connections.Services;
 public static class Secrets
 {
     private const string Prefix = "dpapi1:";
-    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("sOCConnections");
+    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("sOCRCManager");
 
     public static string Protect(string plain)
     {

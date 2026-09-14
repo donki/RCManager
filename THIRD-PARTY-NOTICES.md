@@ -1,4 +1,4 @@
-# Avisos de terceros — sOC Connections
+# Avisos de terceros — sOC Remote Connections Manager
 
 | Componente | Uso | Licencia | Titular |
 |---|---|---|---|

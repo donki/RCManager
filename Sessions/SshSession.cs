@@ -1,11 +1,11 @@
 ﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using Connections.Models;
-using Connections.Services;
+using SocRcManager.Models;
+using SocRcManager.Services;
 using Renci.SshNet;
 
-namespace Connections.Sessions;
+namespace SocRcManager.Sessions;
 
 /// <summary>
 /// Una pestaña SSH: SSH.NET (MIT) abre un shell interactivo y <see cref="TerminalControl"/> lo

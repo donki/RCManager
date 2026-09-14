@@ -1,8 +1,8 @@
 using System.Windows;
 using System.Windows.Forms.Integration;
-using Connections.Models;
+using SocRcManager.Models;
 
-namespace Connections.Sessions;
+namespace SocRcManager.Sessions;
 
 /// <summary>
 /// Una pestaña RDP: el control de Escritorio remoto de Windows (mstscax, el mismo de mstsc.exe)

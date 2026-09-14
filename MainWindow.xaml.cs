@@ -1,14 +1,14 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Connections.Localization;
-using Connections.Models;
-using Connections.Services;
-using Connections.Sessions;
+using SocRcManager.Localization;
+using SocRcManager.Models;
+using SocRcManager.Services;
+using SocRcManager.Sessions;
 
-namespace Connections;
+namespace SocRcManager;
 
 /// <summary>
 /// La ventana: a la izquierda el arbol de carpetas y conexiones, a la derecha una pestaña por
@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         EditButton.ToolTip = Loc.Get("EditTooltip");
         DuplicateButton.ToolTip = Loc.Get("DuplicateTooltip");
         DeleteButton.ToolTip = Loc.Get("DeleteTooltip");
+        ImportButton.ToolTip = Loc.Get("ImportTooltip");
         ConnectButton.ToolTip = Loc.Get("ConnectTooltip");
         OpenFileButton.ToolTip = Loc.Get("OpenFileTooltip");
         LanguageButton.ToolTip = Loc.Get("LanguageTooltip");
@@ -116,7 +117,9 @@ public partial class MainWindow : Window
 
             var item = new TreeViewItem
             {
-                Header = Header(c.Kind == ConnectionKind.Ssh ? "" : "", c.Name.Length > 0 ? c.Name : Loc.Get("Unnamed"), c.Caption),
+                // El servidor al lado del nombre, salvo que sea lo mismo (importado de RDM suele serlo).
+                Header = Header(c.Kind == ConnectionKind.Ssh ? "" : "", c.Name.Length > 0 ? c.Name : Loc.Get("Unnamed"),
+                    string.Equals(c.Caption, c.Name, StringComparison.OrdinalIgnoreCase) ? null : c.Caption),
                 Tag = new Node { Connection = c },
             };
             if (c.Folder.Length > 0)
@@ -304,6 +307,43 @@ public partial class MainWindow : Window
 
         _store.Save();
         BuildTree();
+    }
+
+    /// <summary>
+    /// Importa un .rdm de Remote Desktop Manager. Las conexiones que ya existan (mismo nombre,
+    /// servidor y carpeta) no se repiten; las carpetas se crean aunque esten vacias.
+    /// </summary>
+    private void OnImportClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Remote Desktop Manager (*.rdm)|*.rdm|*.*|*.*", CheckFileExists = true };
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            var result = RdmImport.Read(dialog.FileName);
+            var added = 0;
+            foreach (var c in result.Connections)
+            {
+                var exists = _store.Connections.Any(x =>
+                    string.Equals(x.Name, c.Name, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(x.Host, c.Host, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(x.Folder, c.Folder, StringComparison.OrdinalIgnoreCase));
+                if (exists)
+                    continue;
+                _store.Connections.Add(c);
+                added++;
+            }
+
+            _store.EmptyFolders.AddRange(result.Folders);
+            _store.Save();
+            BuildTree();
+            SetStatus(Loc.Format("Imported", added, result.Connections.Count - added, result.Skipped));
+        }
+        catch (Exception ex)
+        {
+            SetStatus(Loc.Format("ImportFailed", ex.Message));
+        }
     }
 
     private bool Edit(Connection connection)

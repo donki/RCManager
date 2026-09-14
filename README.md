@@ -1,11 +1,11 @@
-# sOC Connections
+# sOC Remote Connections Manager (sOCRCManager)
 
 Gestor de conexiones **RDP y SSH** para Windows, al estilo de Remote Desktop Manager: un árbol de
 servidores organizados por carpetas a la izquierda, y cada sesión en su pestaña a la derecha.
 
 ## Dónde conseguirla
 
-- **Releases de GitHub** (EXE autocontenido de cada versión): https://github.com/donki/Connections/releases
+- **Releases de GitHub** (EXE autocontenido de cada versión): https://github.com/donki/RCManager/releases
 - **Microsoft Store:** pendiente de reservar el nombre en Partner Center.
 
 ## Qué hace
@@ -26,7 +26,7 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
 
 ## Dónde guarda las cosas y a qué accede
 
-- `%LOCALAPPDATA%\sOCConnections\connections.json`: las conexiones, legible a propósito (se puede
+- `%LOCALAPPDATA%\sOCRCManager\connections.json`: las conexiones, legible a propósito (se puede
   copiar, versionar o arreglar a mano). Cada guardado deja el anterior en `connections.bak`. El
   botón de carpeta de la barra inferior lo abre en el Explorador.
 - Las **contraseñas** van cifradas con DPAPI para el usuario de Windows (`dpapi1:…`): el fichero

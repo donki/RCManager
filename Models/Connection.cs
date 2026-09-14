@@ -1,4 +1,4 @@
-namespace Connections.Models;
+namespace SocRcManager.Models;
 
 public enum ConnectionKind
 {

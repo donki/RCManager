@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media.Imaging;
-using Connections.Localization;
-using Connections.Services;
+using SocRcManager.Localization;
+using SocRcManager.Services;
 
-namespace Connections;
+namespace SocRcManager;
 
 /// <summary>«Acerca de»: version, contacto, idioma, privacidad, licencia y aviso legal.</summary>
 public partial class AboutWindow : Window

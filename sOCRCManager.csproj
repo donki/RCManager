@@ -9,13 +9,13 @@
     <!-- El control RDP es ActiveX y se aloja con WindowsFormsHost; los usings implicitos de
          WinForms y System.Drawing se quitan porque chocan con WPF (Application, Color...). -->
     <UseWindowsForms>true</UseWindowsForms>
-    <RootNamespace>Connections</RootNamespace>
-    <AssemblyName>sOCConnections</AssemblyName>
-    <ApplicationTitle>sOC Connections</ApplicationTitle>
+    <RootNamespace>SocRcManager</RootNamespace>
+    <AssemblyName>sOCRCManager</AssemblyName>
+    <ApplicationTitle>sOC Remote Connections Manager</ApplicationTitle>
     <Version>2026.9.14.0</Version>
     <AssemblyVersion>2026.9.14.0</AssemblyVersion>
     <FileVersion>2026.9.14.0</FileVersion>
-    <Product>sOC Connections</Product>
+    <Product>sOC Remote Connections Manager</Product>
     <Company>Socratic</Company>
     <Copyright>Copyright © 2026 Socratic</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

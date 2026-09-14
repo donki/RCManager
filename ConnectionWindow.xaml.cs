@@ -1,10 +1,10 @@
 using System.Windows;
-using Connections.Localization;
-using Connections.Models;
-using Connections.Services;
+using SocRcManager.Localization;
+using SocRcManager.Models;
+using SocRcManager.Services;
 using Microsoft.Win32;
 
-namespace Connections;
+namespace SocRcManager;
 
 /// <summary>Alta y edicion de una conexion. Escribe sobre el objeto que recibe solo al guardar.</summary>
 public partial class ConnectionWindow : Window

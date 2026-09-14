@@ -1,7 +1,7 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows.Markup;
 
-namespace Connections.Localization;
+namespace SocRcManager.Localization;
 
 /// <summary>
 /// Textos de la aplicacion en español e ingles (constitucion, seccion 7). Ningun texto va en el
@@ -11,7 +11,7 @@ public static class Loc
 {
     private static readonly Dictionary<string, string> English = new()
     {
-        ["AppTitle"] = "sOC Connections",
+        ["AppTitle"] = "sOC Remote Connections Manager",
         ["AboutTitle"] = "About",
         ["AboutTooltip"] = "About",
         ["AboutDescription"] = "Your RDP and SSH connections in one place: a tree of servers, and each session in a tab.",
@@ -42,6 +42,9 @@ public static class Loc
         ["ConnectTooltip"] = "Connect",
         ["DisconnectTooltip"] = "Disconnect this tab",
         ["OpenFileTooltip"] = "Open the connections file folder",
+        ["ImportTooltip"] = "Import from Remote Desktop Manager (.rdm)",
+        ["Imported"] = "Imported {0} connections ({1} already existed, {2} of unsupported types skipped). Passwords are not imported: they are asked for when connecting.",
+        ["ImportFailed"] = "Could not import: {0}",
         ["EmptyTree"] = "No connections yet. Add one with + and it will show up here.",
         ["EmptyTabs"] = "Double-click a connection, or select it and press Connect. Each session opens in its own tab.",
         ["Ready"] = "Ready",
@@ -90,7 +93,7 @@ public static class Loc
 
     private static readonly Dictionary<string, string> Spanish = new()
     {
-        ["AppTitle"] = "sOC Connections",
+        ["AppTitle"] = "sOC Remote Connections Manager",
         ["AboutTitle"] = "Acerca de",
         ["AboutTooltip"] = "Acerca de",
         ["AboutDescription"] = "Tus conexiones RDP y SSH en un sitio: un árbol de servidores, y cada sesión en su pestaña.",
@@ -121,6 +124,9 @@ public static class Loc
         ["ConnectTooltip"] = "Conectar",
         ["DisconnectTooltip"] = "Desconectar esta pestaña",
         ["OpenFileTooltip"] = "Abrir la carpeta del fichero de conexiones",
+        ["ImportTooltip"] = "Importar de Remote Desktop Manager (.rdm)",
+        ["Imported"] = "Importadas {0} conexiones ({1} ya existían, {2} de tipos no admitidos se han dejado fuera). Las contraseñas no se importan: se piden al conectar.",
+        ["ImportFailed"] = "No se ha podido importar: {0}",
         ["EmptyTree"] = "Todavía no hay conexiones. Añade una con + y aparecerá aquí.",
         ["EmptyTabs"] = "Haz doble clic en una conexión, o selecciónala y pulsa Conectar. Cada sesión se abre en su pestaña.",
         ["Ready"] = "Listo",
