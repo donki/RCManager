@@ -35,7 +35,61 @@ public sealed class RdpSession : ISession
         // el boton de restaurar) pide salir por este evento; hay que obedecer poniendo FullScreen
         // a false, el control no lo hace solo.
         _rdp.OnRequestLeaveFullScreen += (_, _) => _rdp.FullScreen = false;
-        _rdp.OnLeaveFullScreenMode += (_, _) => LeftFullScreen?.Invoke();
+        _rdp.OnLeaveFullScreenMode += (_, _) =>
+        {
+            LeftFullScreen?.Invoke();
+            // De vuelta a la pestaña: el escritorio se habia puesto a la resolucion de la pantalla
+            // y hay que devolverlo al tamaño de la pestaña, si no se queda grande y con barras.
+            _resize.Stop();
+            _resize.Start();
+        };
+
+        // El escritorio remoto sigue al tamaño de la pestaña (resolucion dinamica, RDP 8.1+): al
+        // redimensionar la ventana se le pide al servidor el tamaño nuevo, en pixeles fisicos, y
+        // se ve nitido en vez de escalado. Con retardo, para no pedirlo veinte veces por arrastre.
+        _resize = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _resize.Tick += (_, _) => { _resize.Stop(); ApplyDisplaySize(); };
+        _host.SizeChanged += (_, _) =>
+        {
+            if (_connected && !_rdp.FullScreen)
+            {
+                _resize.Stop();
+                _resize.Start();
+            }
+        };
+        _rdp.OnConnected += (_, _) => { _connected = true; };
+        _rdp.OnDisconnected += (_, _) => { _connected = false; };
+    }
+
+    private readonly System.Windows.Threading.DispatcherTimer _resize;
+    private bool _connected;
+
+    /// <summary>Tamaño del control en pixeles fisicos (el DPI de la pantalla ya aplicado).</summary>
+    private (int Width, int Height) PixelSize()
+    {
+        var source = PresentationSource.FromVisual(_host);
+        var scaleX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+        var scaleY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+        var w = (int)Math.Round(_host.ActualWidth * scaleX);
+        var h = (int)Math.Round(_host.ActualHeight * scaleY);
+        return (Math.Max(200, w), Math.Max(200, h));
+    }
+
+    /// <summary>Pide al servidor el tamaño de escritorio que cabe ahora en la pestaña.</summary>
+    private void ApplyDisplaySize()
+    {
+        if (!_connected || _rdp.FullScreen)
+            return;
+        var (w, h) = PixelSize();
+        try
+        {
+            if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
+                client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, 1, 1);
+        }
+        catch (Exception)
+        {
+            // Servidor sin resolucion dinamica: se queda el SmartSizing (escalado) de la conexion.
+        }
     }
 
     public FrameworkElement View { get; }
@@ -68,9 +122,9 @@ public sealed class RdpSession : ISession
         advanced.ConnectToServerConsole = false;
         _rdp.FullScreenTitle = _connection.Name;
 
-        // Tamaño del escritorio: el de la pestaña ahora mismo (con SmartSizing luego se escala).
-        var width = Math.Max(800, (int)_host.ActualWidth);
-        var height = Math.Max(600, (int)_host.ActualHeight);
+        // Tamaño del escritorio: el de la pestaña ahora mismo, en pixeles fisicos. Luego sigue
+        // a la ventana (resolucion dinamica) y, si el servidor no lo admite, SmartSizing lo escala.
+        var (width, height) = PixelSize();
         _rdp.DesktopWidth = width;
         _rdp.DesktopHeight = height;
         _rdp.ColorDepth = 32;

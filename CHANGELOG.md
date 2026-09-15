@@ -1,5 +1,13 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.4 — El escritorio remoto sigue al tamaño de la pestaña
+
+- Al cambiar el tamaño de la ventana (y al volver de pantalla completa) se pide al servidor la
+  resolución que cabe en la pestaña, en píxeles físicos (resolución dinámica, RDP 8.1+): se ve
+  nítido y sin barras. Antes, al volver de pantalla completa, el escritorio se quedaba a la
+  resolución de la pantalla y no se escalaba. Si el servidor no admite el cambio en caliente, queda
+  el escalado (SmartSizing) de siempre.
+
 ## 2026.9.15.3 — La barra de estado ya no se come la ventana
 
 - Un error de la nube con el JSON entero (veinte líneas) hacía crecer la barra de estado hasta
