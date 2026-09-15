@@ -4,6 +4,12 @@ public enum ConnectionKind
 {
     Rdp,
     Ssh,
+
+    /// <summary>Ficheros por SSH: se navega por SFTP; las transferencias por SFTP o, si se pide, por SCP.</summary>
+    Sftp,
+
+    /// <summary>Ficheros por FTP, o FTPS explicito/implicito.</summary>
+    Ftp,
 }
 
 /// <summary>
@@ -36,6 +42,20 @@ public sealed class Connection
     public string PrivateKeyPath { get; set; } = string.Empty;
 
     public string Notes { get; set; } = string.Empty;
+
+    // ------------------------------------------------------------------ Ficheros (SFTP/SCP y FTP/FTPS)
+
+    /// <summary>SFTP: transferir por SCP (el protocolo antiguo) en vez de por SFTP. El listado va siempre por SFTP.</summary>
+    public bool UseScp { get; set; }
+
+    /// <summary>FTP: 0 = sin cifrar, 1 = FTPS explicito (AUTH TLS, puerto 21), 2 = FTPS implicito (puerto 990).</summary>
+    public int FtpsMode { get; set; }
+
+    /// <summary>Directorio remoto con el que se abre el explorador (vacio = el que de el servidor).</summary>
+    public string RemotePath { get; set; } = string.Empty;
+
+    /// <summary>Directorio de este PC con el que se abre el explorador (vacio = el perfil del usuario).</summary>
+    public string LocalPath { get; set; } = string.Empty;
 
     // ------------------------------------------------------------------ RDP: las opciones del
     // cliente de Windows (mstsc), pestaña a pestaña. Los valores por defecto son los de mstsc,
@@ -122,7 +142,18 @@ public sealed class Connection
 
     public DateTime? LastConnectedAt { get; set; }
 
-    public int DefaultPort => Kind == ConnectionKind.Ssh ? 22 : 3389;
+    public int DefaultPort => Kind switch
+    {
+        ConnectionKind.Ssh or ConnectionKind.Sftp => 22,
+        ConnectionKind.Ftp => FtpsMode == 2 ? 990 : 21,
+        _ => 3389,
+    };
+
+    /// <summary>Va por SSH (terminal o ficheros): contraseña o clave privada.</summary>
+    public bool IsSsh => Kind is ConnectionKind.Ssh or ConnectionKind.Sftp;
+
+    /// <summary>Es un explorador de ficheros, no un escritorio ni un terminal.</summary>
+    public bool IsFiles => Kind is ConnectionKind.Sftp or ConnectionKind.Ftp;
 
     public string Caption => Port == DefaultPort ? Host : $"{Host}:{Port}";
 

@@ -1,0 +1,35 @@
+<UserControl x:Class="SocRcManager.Files.FileBrowserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:files="clr-namespace:SocRcManager.Files"
+             Background="{DynamicResource PageBackground}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Este PC a la izquierda, el servidor a la derecha, como en FileZilla / WinSCP. -->
+        <files:FilePane x:Name="LocalPane" Grid.Row="0" Grid.Column="0" />
+        <GridSplitter Grid.Row="0" Grid.Column="1" Width="4" Background="{DynamicResource Separator}"
+                      HorizontalAlignment="Center" VerticalAlignment="Stretch" />
+        <files:FilePane x:Name="RemotePane" Grid.Row="0" Grid.Column="2" />
+
+        <!-- Transferencias: que va, cuanto lleva, y parar. -->
+        <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource CardBackground}" Padding="10,4"
+                BorderBrush="{DynamicResource Separator}" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <Button x:Name="CancelButton" DockPanel.Dock="Right" Style="{StaticResource DangerIconButton}" Content="&#xE711;"
+                        Click="OnCancelClick" Visibility="Collapsed" Width="28" Height="28" FontSize="12" />
+                <ProgressBar x:Name="Progress" DockPanel.Dock="Right" Width="180" Height="8" Margin="10,0" Visibility="Collapsed"
+                             Foreground="{DynamicResource Primary}" Background="{DynamicResource PageBackground}" BorderThickness="0" />
+                <TextBlock x:Name="TransferText" Style="{StaticResource HintText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

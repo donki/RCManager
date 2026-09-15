@@ -1,6 +1,6 @@
 # sOC Remote Connections Manager (sOCRCManager)
 
-Gestor de conexiones **RDP y SSH** para Windows, al estilo de Remote Desktop Manager: un árbol de
+Gestor de conexiones **RDP, SSH, SFTP/SCP y FTP/FTPS** para Windows, al estilo de Remote Desktop Manager: un árbol de
 servidores organizados por carpetas a la izquierda, y cada sesión en su pestaña a la derecha.
 
 ## Dónde conseguirla
@@ -28,6 +28,13 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   historial (rueda del ratón o Mayús+RePág/AvPág), copiar y pegar (Ctrl+Mayús+C / Ctrl+Mayús+V, o
   botón derecho: pega si no hay selección y copia si la hay). El shell se redimensiona con la
   ventana. Se entra con contraseña o con clave privada (OpenSSH/PEM, con o sin frase).
+- **SFTP / SCP** y **FTP / FTPS** en la pestaña, con un explorador de dos paneles como el de
+  FileZilla: este equipo a la izquierda, el servidor a la derecha. Subir y bajar ficheros y carpetas
+  enteras (botón, F5, doble clic o arrastrando al otro panel) con cola, progreso y cancelar; crear
+  carpeta (F7), renombrar (F2), borrar (Supr), subir un nivel (Retroceso). SFTP con contraseña o
+  clave privada, opción de transferir por SCP; FTPS explícito o implícito. [FluentFTP](https://github.com/robinrodricks/FluentFTP)
+  (MIT) para FTP.
+- `sOCRCManager.exe --open "Nombre"` abre esa conexión al arrancar.
 - Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
   (cifrada con DPAPI para el usuario de Windows).
 - **Importar desde Remote Desktop Manager**: botón ⇥ de la barra del árbol; lee un `.rdm` exportado
@@ -80,5 +87,6 @@ dentro (se pide confirmación y queda el `.bak`).
 
 - Probar RDP contra un servidor real (el control de Windows no deja conectar con el propio equipo,
   y en la red de desarrollo no había otro).
-- Importar desde `.rdp` y desde otros gestores (RDM ya está).
+- Importar desde `.rdp` y desde otros gestores (RDM ya está; las conexiones FTP/SFTP de RDM no se
+  importan todavía).
 - Paquete MSIX y ficha de Microsoft Store.

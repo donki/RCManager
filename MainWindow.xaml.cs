@@ -164,8 +164,10 @@ public partial class MainWindow : Window
             return item;
         }
 
-        foreach (var folder in _store.AllFolders())
-            FolderItem(folder);
+        // Con filtro solo salen las carpetas de las conexiones que encajan.
+        if (filter.Length == 0)
+            foreach (var folder in _store.AllFolders())
+                FolderItem(folder);
 
         var shown = 0;
         foreach (var c in _store.Connections.OrderBy(c => c.Folder, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase))
@@ -177,7 +179,7 @@ public partial class MainWindow : Window
             {
                 Style = (Style)FindResource("TreeItem"),
                 // El servidor al lado del nombre, salvo que sea lo mismo (importado de RDM suele serlo).
-                Header = Header(c.Kind == ConnectionKind.Ssh ? "" : "", c.Name.Length > 0 ? c.Name : Loc.Get("Unnamed"),
+                Header = Header(c.Kind switch { ConnectionKind.Ssh => "", ConnectionKind.Sftp or ConnectionKind.Ftp => "", _ => "" }, c.Name.Length > 0 ? c.Name : Loc.Get("Unnamed"),
                     string.Equals(c.Caption, c.Name, StringComparison.OrdinalIgnoreCase) ? null : c.Caption),
                 Tag = new Node { Connection = c },
             };
@@ -603,6 +605,19 @@ public partial class MainWindow : Window
     //  Sesiones
     // =====================================================================
 
+    /// <summary>Abre la conexion con ese nombre (parametro --open de la linea de comandos).</summary>
+    public async void OpenByName(string name)
+    {
+        var connection = _store.Connections.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.CurrentCultureIgnoreCase));
+        if (connection is null)
+        {
+            SetStatus(Loc.Format("OpenNotFound", name));
+            return;
+        }
+        SelectConnection(connection);
+        await OpenAsync(connection);
+    }
+
     private async void OnConnectClick(object sender, RoutedEventArgs e)
     {
         if (Selected?.Connection is { } c)
@@ -616,7 +631,7 @@ public partial class MainWindow : Window
         {
             var asked = PromptWindow.AskPassword(this, Loc.Get("PasswordTitle"), Loc.Format("PasswordPrompt", connection.UserName, connection.Host), Loc.Get("SavePassword"));
             password = asked?.Password ?? string.Empty;
-            if (password.Length == 0 && connection.Kind == ConnectionKind.Ssh)
+            if (password.Length == 0 && connection.IsSsh)
                 return;
 
             // Guardarla: cifrada con DPAPI para este usuario de Windows, como desde el editor.
@@ -627,7 +642,12 @@ public partial class MainWindow : Window
             }
         }
 
-        ISession session = connection.Kind == ConnectionKind.Ssh ? new SshSession(connection) : new RdpSession(connection);
+        ISession session = connection.Kind switch
+        {
+            ConnectionKind.Ssh => new SshSession(connection),
+            ConnectionKind.Sftp or ConnectionKind.Ftp => new FileSession(connection),
+            _ => new RdpSession(connection),
+        };
 
         var fullButton = new Button
         {

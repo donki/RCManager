@@ -1,0 +1,135 @@
+using System.IO;
+using Renci.SshNet;
+using Renci.SshNet.Sftp;
+using SocRcManager.Models;
+
+namespace SocRcManager.Files;
+
+/// <summary>
+/// Ficheros por SSH con SSH.NET: se navega por SFTP y, si la conexion lo pide, las transferencias
+/// van por SCP (el protocolo antiguo, que algunos servidores tienen mas rapido o es lo unico que
+/// dejan usar). SCP no sabe listar directorios: por eso el listado va siempre por SFTP.
+/// </summary>
+public sealed class SftpFileSystem : IRemoteFileSystem
+{
+    private readonly SftpClient _sftp;
+    private readonly ScpClient? _scp;
+
+    private SftpFileSystem(SftpClient sftp, ScpClient? scp)
+    {
+        _sftp = sftp;
+        _scp = scp;
+        InitialDirectory = sftp.WorkingDirectory;
+    }
+
+    public string InitialDirectory { get; }
+
+    public static async Task<SftpFileSystem> ConnectAsync(Connection connection, string password, CancellationToken cancellationToken)
+    {
+        var info = SshAuth.Build(connection, password);
+        var sftp = new SftpClient(info);
+        await Task.Run(sftp.Connect, cancellationToken);
+
+        ScpClient? scp = null;
+        if (connection.UseScp)
+        {
+            scp = new ScpClient(SshAuth.Build(connection, password));
+            await Task.Run(scp.Connect, cancellationToken);
+        }
+        return new SftpFileSystem(sftp, scp);
+    }
+
+    public Task<IReadOnlyList<FileEntry>> ListAsync(string path, CancellationToken cancellationToken) => Task.Run(() =>
+    {
+        var entries = new List<FileEntry>();
+        foreach (ISftpFile f in _sftp.ListDirectory(path))
+        {
+            if (f.Name is "." or "..")
+                continue;
+            // Un enlace simbolico a un directorio se trata como directorio (si se puede saber).
+            var isDir = f.IsDirectory;
+            if (f.IsSymbolicLink)
+            {
+                try { isDir = _sftp.GetAttributes(f.FullName).IsDirectory; } catch (Exception) { }
+            }
+            entries.Add(new FileEntry(f.Name, f.FullName, isDir, f.Length, f.LastWriteTime));
+        }
+        return (IReadOnlyList<FileEntry>)entries;
+    }, cancellationToken);
+
+    public Task DownloadAsync(string remotePath, string localPath, IProgress<long> progress, CancellationToken cancellationToken) => Task.Run(() =>
+    {
+        using var file = File.Create(localPath);
+        if (_scp is not null)
+        {
+            long last = 0;
+            void OnProgress(object? _, Renci.SshNet.Common.ScpDownloadEventArgs e) { progress.Report(e.Downloaded - last); last = e.Downloaded; }
+            _scp.Downloading += OnProgress;
+            try { _scp.Download(remotePath, file); }
+            finally { _scp.Downloading -= OnProgress; }
+            return;
+        }
+        long previous = 0;
+        _sftp.DownloadFile(remotePath, file, done => { progress.Report((long)done - previous); previous = (long)done; });
+    }, cancellationToken);
+
+    public Task UploadAsync(string localPath, string remotePath, IProgress<long> progress, CancellationToken cancellationToken) => Task.Run(() =>
+    {
+        using var file = File.OpenRead(localPath);
+        if (_scp is not null)
+        {
+            long last = 0;
+            void OnProgress(object? _, Renci.SshNet.Common.ScpUploadEventArgs e) { progress.Report(e.Uploaded - last); last = e.Uploaded; }
+            _scp.Uploading += OnProgress;
+            try { _scp.Upload(file, remotePath); }
+            finally { _scp.Uploading -= OnProgress; }
+            return;
+        }
+        long previous = 0;
+        _sftp.UploadFile(file, remotePath, true, done => { progress.Report((long)done - previous); previous = (long)done; });
+    }, cancellationToken);
+
+    public Task CreateDirectoryAsync(string path, CancellationToken cancellationToken) => Task.Run(() => _sftp.CreateDirectory(path), cancellationToken);
+
+    public Task DeleteFileAsync(string path, CancellationToken cancellationToken) => Task.Run(() => _sftp.DeleteFile(path), cancellationToken);
+
+    public Task DeleteDirectoryAsync(string path, CancellationToken cancellationToken) => Task.Run(() => _sftp.DeleteDirectory(path), cancellationToken);
+
+    public Task RenameAsync(string path, string newPath, CancellationToken cancellationToken) => Task.Run(() => _sftp.RenameFile(path, newPath), cancellationToken);
+
+    public void Dispose()
+    {
+        try { _scp?.Disconnect(); _scp?.Dispose(); } catch (Exception) { }
+        try { _sftp.Disconnect(); _sftp.Dispose(); } catch (Exception) { }
+    }
+}
+
+/// <summary>La autenticacion SSH que comparten el terminal y los ficheros: clave privada, contraseña o teclado interactivo.</summary>
+public static class SshAuth
+{
+    public static ConnectionInfo Build(Connection connection, string password)
+    {
+        var user = connection.UserName;
+        var methods = new List<AuthenticationMethod>();
+        if (connection.PrivateKeyPath.Length > 0 && File.Exists(connection.PrivateKeyPath))
+        {
+            var key = password.Length > 0 ? new PrivateKeyFile(connection.PrivateKeyPath, password) : new PrivateKeyFile(connection.PrivateKeyPath);
+            methods.Add(new PrivateKeyAuthenticationMethod(user, key));
+        }
+        if (password.Length > 0)
+        {
+            methods.Add(new PasswordAuthenticationMethod(user, password));
+            var kbd = new KeyboardInteractiveAuthenticationMethod(user);
+            kbd.AuthenticationPrompt += (_, e) =>
+            {
+                foreach (var prompt in e.Prompts)
+                    prompt.Response = password;
+            };
+            methods.Add(kbd);
+        }
+        if (methods.Count == 0)
+            throw new InvalidOperationException(Localization.Loc.Get("SshNoCredentials"));
+
+        return new ConnectionInfo(connection.Host, connection.Port, user, methods.ToArray()) { Timeout = TimeSpan.FromSeconds(20) };
+    }
+}

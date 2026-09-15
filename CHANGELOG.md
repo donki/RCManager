@@ -1,5 +1,20 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.7 — Ficheros: SFTP/SCP y FTP/FTPS
+
+- **Dos tipos de conexión nuevos**: *SFTP / SCP* (por SSH, con contraseña o clave privada; opción
+  de transferir por SCP) y *FTP / FTPS* (en claro, FTPS explícito —AUTH TLS, puerto 21— o
+  implícito —puerto 990—; el certificado del servidor se acepta). Carpetas de inicio local y
+  remota por conexión.
+- **Explorador de dos paneles** en la pestaña, como FileZilla: este equipo a la izquierda (con
+  «Este equipo» para cambiar de unidad), el servidor a la derecha. Subir y bajar ficheros y
+  carpetas enteras (botón, F5, doble clic en un fichero o arrastrando al otro panel), con cola,
+  progreso y cancelar; crear carpeta (F7), renombrar (F2), borrar (Supr), subir un nivel
+  (Retroceso) y escribir una ruta directamente.
+- `sOCRCManager.exe --open "Nombre"` abre esa conexión al arrancar (para accesos directos).
+- Al buscar en el árbol solo salen las carpetas con conexiones que encajan.
+- FluentFTP (MIT) para FTP; SSH.NET (MIT) ya estaba para SSH.
+
 ## 2026.9.15.6 — Todas las opciones del cliente de Escritorio remoto, y el árbol como se dejó
 
 - **Editor de conexión con las pestañas de mstsc**: *General*, *Pantalla* (ajustar a la pestaña o

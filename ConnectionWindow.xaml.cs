@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using SocRcManager.Localization;
 using SocRcManager.Models;
@@ -33,7 +33,7 @@ public partial class ConnectionWindow : Window
 
         // --- General ---
         NameBox.Text = connection.Name;
-        KindBox.SelectedIndex = connection.Kind == ConnectionKind.Ssh ? 1 : 0;
+        KindBox.SelectedIndex = connection.Kind switch { ConnectionKind.Ssh => 1, ConnectionKind.Sftp => 2, ConnectionKind.Ftp => 3, _ => 0 };
         FolderBox.ItemsSource = folders;
         FolderBox.Text = connection.Folder;
         HostBox.Text = connection.Host;
@@ -43,6 +43,12 @@ public partial class ConnectionWindow : Window
         PasswordBox.Password = Secrets.Unprotect(connection.PasswordProtected);
         KeyBox.Text = connection.PrivateKeyPath;
         NotesBox.Text = connection.Notes;
+
+        // --- Ficheros ---
+        FtpsBox.SelectedIndex = Math.Clamp(connection.FtpsMode, 0, 2);
+        ScpBox.IsChecked = connection.UseScp;
+        RemotePathBox.Text = connection.RemotePath;
+        LocalPathBox.Text = connection.LocalPath;
 
         // --- Pantalla ---
         var size = Array.FindIndex(Sizes, s => s.W == connection.RdpWidth && s.H == connection.RdpHeight);
@@ -90,7 +96,9 @@ public partial class ConnectionWindow : Window
         Loaded += (_, _) => { NameBox.Focus(); NameBox.SelectAll(); };
     }
 
-    private ConnectionKind Kind => KindBox.SelectedIndex == 1 ? ConnectionKind.Ssh : ConnectionKind.Rdp;
+    private ConnectionKind Kind => KindBox.SelectedIndex switch { 1 => ConnectionKind.Ssh, 2 => ConnectionKind.Sftp, 3 => ConnectionKind.Ftp, _ => ConnectionKind.Rdp };
+
+    private static readonly string[] DefaultPorts = ["3389", "22", "21", "990"];
 
     private void OnKindChanged(object sender, RoutedEventArgs e)
     {
@@ -98,20 +106,42 @@ public partial class ConnectionWindow : Window
             return;
 
         // Al cambiar de tipo, el puerto por defecto sigue al tipo si el usuario no lo habia tocado.
-        if (PortBox.Text == "3389" || PortBox.Text == "22" || PortBox.Text.Length == 0)
-            PortBox.Text = Kind == ConnectionKind.Ssh ? "22" : "3389";
+        if (DefaultPorts.Contains(PortBox.Text) || PortBox.Text.Length == 0)
+            PortBox.Text = DefaultPort().ToString();
         ShowKindFields();
     }
 
-    /// <summary>SSH solo tiene General; las otras pestañas son las de mstsc.</summary>
+    private int DefaultPort() => Kind switch
+    {
+        ConnectionKind.Ssh or ConnectionKind.Sftp => 22,
+        ConnectionKind.Ftp => FtpsBox.SelectedIndex == 2 ? 990 : 21,
+        _ => 3389,
+    };
+
+    private void OnFtpsChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded)
+            return;
+        // FTPS implicito va por el 990; al volver a explicito o sin cifrar, al 21.
+        if (DefaultPorts.Contains(PortBox.Text) || PortBox.Text.Length == 0)
+            PortBox.Text = DefaultPort().ToString();
+    }
+
+    /// <summary>Solo RDP tiene las pestañas de mstsc; SSH y SFTP llevan clave privada; FTP el modo FTPS.</summary>
     private void ShowKindFields()
     {
-        var ssh = Kind == ConnectionKind.Ssh;
+        var kind = Kind;
+        var rdp = kind == ConnectionKind.Rdp;
+        var ssh = kind is ConnectionKind.Ssh or ConnectionKind.Sftp;
+        var files = kind is ConnectionKind.Sftp or ConnectionKind.Ftp;
         SshPanel.Visibility = ssh ? Visibility.Visible : Visibility.Collapsed;
-        DomainPanel.Visibility = ssh ? Visibility.Collapsed : Visibility.Visible;
+        DomainPanel.Visibility = rdp ? Visibility.Visible : Visibility.Collapsed;
+        FtpPanel.Visibility = kind == ConnectionKind.Ftp ? Visibility.Visible : Visibility.Collapsed;
+        FilesPanel.Visibility = files ? Visibility.Visible : Visibility.Collapsed;
+        ScpBox.Visibility = kind == ConnectionKind.Sftp ? Visibility.Visible : Visibility.Collapsed;
         foreach (var tab in new[] { DisplayTab, ResourcesTab, ExperienceTab, AdvancedTab })
-            tab.Visibility = ssh ? Visibility.Collapsed : Visibility.Visible;
-        if (ssh)
+            tab.Visibility = rdp ? Visibility.Visible : Visibility.Collapsed;
+        if (!rdp)
             Sections.SelectedItem = GeneralTab;
     }
 
@@ -159,8 +189,14 @@ public partial class ConnectionWindow : Window
         c.UserName = UserBox.Text.Trim();
         c.Domain = DomainBox.Text.Trim();
         c.PasswordProtected = Secrets.Protect(PasswordBox.Password);
-        c.PrivateKeyPath = Kind == ConnectionKind.Ssh ? KeyBox.Text.Trim() : string.Empty;
+        c.PrivateKeyPath = Kind is ConnectionKind.Ssh or ConnectionKind.Sftp ? KeyBox.Text.Trim() : string.Empty;
         c.Notes = NotesBox.Text.Trim();
+
+        // --- Ficheros ---
+        c.FtpsMode = Kind == ConnectionKind.Ftp ? Math.Max(0, FtpsBox.SelectedIndex) : 0;
+        c.UseScp = Kind == ConnectionKind.Sftp && ScpBox.IsChecked == true;
+        c.RemotePath = RemotePathBox.Text.Trim();
+        c.LocalPath = LocalPathBox.Text.Trim();
 
         // --- Pantalla ---
         if (SizeBox.SelectedIndex == 0)

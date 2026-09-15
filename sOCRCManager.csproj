@@ -12,9 +12,9 @@
     <RootNamespace>SocRcManager</RootNamespace>
     <AssemblyName>sOCRCManager</AssemblyName>
     <ApplicationTitle>sOC Remote Connections Manager</ApplicationTitle>
-    <Version>2026.9.15.6</Version>
-    <AssemblyVersion>2026.9.15.6</AssemblyVersion>
-    <FileVersion>2026.9.15.6</FileVersion>
+    <Version>2026.9.15.7</Version>
+    <AssemblyVersion>2026.9.15.7</AssemblyVersion>
+    <FileVersion>2026.9.15.7</FileVersion>
     <Product>sOC Remote Connections Manager</Product>
     <Company>Socratic</Company>
     <Copyright>Copyright © 2026 Socratic</Copyright>
@@ -36,6 +36,7 @@
       generado a partir de una biblioteca del propio sistema: no redistribuye nada de Microsoft y el
       control real es el mstscax.dll de cada Windows.
     -->
+    <PackageReference Include="FluentFTP" Version="54.2.1" />
     <Reference Include="MSTSCLib">
       <HintPath>Interop\MSTSCLib.dll</HintPath>
     </Reference>
