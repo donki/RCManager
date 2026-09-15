@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using SocRcManager.Localization;
 using SocRcManager.Models;
 using SocRcManager.Services;
@@ -34,6 +34,7 @@ public partial class ConnectionWindow : Window
         NotesBox.Text = connection.Notes;
         SmartSizingBox.IsChecked = connection.RdpSmartSizing;
         ClipboardBox.IsChecked = connection.RdpClipboard;
+        DrivesBox.IsChecked = connection.RdpDrives;
 
         ShowKindFields();
         Loaded += (_, _) => { NameBox.Focus(); NameBox.SelectAll(); };
@@ -89,6 +90,7 @@ public partial class ConnectionWindow : Window
         _connection.Notes = NotesBox.Text.Trim();
         _connection.RdpSmartSizing = SmartSizingBox.IsChecked == true;
         _connection.RdpClipboard = ClipboardBox.IsChecked == true;
+        _connection.RdpDrives = DrivesBox.IsChecked == true;
 
         DialogResult = true;
     }

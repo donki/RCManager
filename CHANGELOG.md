@@ -1,5 +1,14 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.5 — Ficheros entre el PC y el escritorio remoto
+
+- **Unidades de este PC en el remoto** (opción por conexión, activada por defecto): en el escritorio
+  remoto aparecen como «C en <tu PC>» en *Este equipo* (y como `\tsclient\C`), con lo que se copian
+  y mueven ficheros con el Explorador en los dos sentidos. Los USB que se enchufen durante la sesión
+  también.
+- El portapapeles compartido ya llevaba ficheros (Ctrl+C en un Explorador, Ctrl+V en el otro); ahora
+  la opción lo dice.
+
 ## 2026.9.15.4 — El escritorio remoto sigue al tamaño de la pestaña
 
 - Al cambiar el tamaño de la ventana (y al volver de pantalla completa) se pide al servidor la

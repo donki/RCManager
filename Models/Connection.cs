@@ -1,4 +1,4 @@
-namespace SocRcManager.Models;
+﻿namespace SocRcManager.Models;
 
 public enum ConnectionKind
 {
@@ -42,6 +42,13 @@ public sealed class Connection
 
     /// <summary>RDP: llevar el portapapeles.</summary>
     public bool RdpClipboard { get; set; } = true;
+
+    /// <summary>
+    /// RDP: las unidades de este PC se ven en el remoto («C en <i>equipo</i>» en Este equipo,
+    /// <c>\tsclient\C</c>): asi se copian y mueven ficheros con el Explorador en los dos sentidos.
+    /// (Copiar y pegar ficheros por el portapapeles va con <see cref="RdpClipboard"/>.)
+    /// </summary>
+    public bool RdpDrives { get; set; } = true;
 
     public DateTime? LastConnectedAt { get; set; }
 

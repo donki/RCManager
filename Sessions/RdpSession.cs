@@ -112,7 +112,12 @@ public sealed class RdpSession : ISession
         advanced.SmartSizing = _connection.RdpSmartSizing;
         advanced.EnableCredSspSupport = true;
         advanced.AuthenticationLevel = 0;   // no parar por el certificado del servidor: se avisa, no se bloquea
+        // Portapapeles (texto, imagenes y ficheros: Ctrl+C / Ctrl+V entre los dos Exploradores) y
+        // unidades del PC dentro del remoto (para copiar y mover con el Explorador).
         advanced.RedirectClipboard = _connection.RdpClipboard;
+        advanced.RedirectDrives = _connection.RdpDrives;
+        if (_connection.RdpDrives && _rdp.GetOcx() is MSTSCLib.IMsRdpClientNonScriptable5 nonScriptable)
+            nonScriptable.RedirectDynamicDrives = true;   // tambien los USB que se enchufen durante la sesion
 
         // Pantalla completa gestionada por el control, con la barra de conexion de mstsc arriba
         // (se oculta sola; al acercar el raton al borde superior vuelve, con minimizar/restaurar/cerrar).

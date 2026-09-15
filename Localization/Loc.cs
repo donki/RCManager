@@ -113,7 +113,8 @@ public static class Loc
         ["BrowseTooltip"] = "Choose file",
         ["Notes"] = "Notes",
         ["RdpSmartSizing"] = "Fit the desktop to the tab",
-        ["RdpClipboard"] = "Share the clipboard",
+        ["RdpClipboard"] = "Share the clipboard (text, images and files)",
+        ["RdpDrives"] = "Show this PC's drives in the remote desktop (copy and move files with Explorer)",
         ["Save"] = "Save",
         ["NameRequired"] = "The name and the host are required.",
 
@@ -229,7 +230,8 @@ public static class Loc
         ["BrowseTooltip"] = "Elegir fichero",
         ["Notes"] = "Notas",
         ["RdpSmartSizing"] = "Ajustar el escritorio a la pestaña",
-        ["RdpClipboard"] = "Compartir el portapapeles",
+        ["RdpClipboard"] = "Compartir el portapapeles (texto, imágenes y ficheros)",
+        ["RdpDrives"] = "Ver las unidades de este PC en el remoto (copiar y mover ficheros con el Explorador)",
         ["Save"] = "Guardar",
         ["NameRequired"] = "El nombre y el servidor son obligatorios.",
 
