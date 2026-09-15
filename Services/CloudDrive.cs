@@ -1,4 +1,4 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -102,7 +102,7 @@ public sealed class GoogleDrive : ICloudDrive
     private static async Task EnsureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Google Drive: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)}");
+            throw new InvalidOperationException(CloudError.Describe("Google Drive", response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), "GoogleScopeMissing"));
     }
 }
 
@@ -161,6 +161,41 @@ public sealed class OneDrive : ICloudDrive
     private static async Task EnsureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"OneDrive: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)}");
+            throw new InvalidOperationException(CloudError.Describe("OneDrive", response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false), "MicrosoftScopeMissing"));
+    }
+}
+
+/// <summary>
+/// Un error HTTP de la nube en una linea: el mensaje del JSON de error, no el JSON entero (que
+/// llenaba la barra de estado con veinte lineas y dejaba la ventana sin sitio para nada mas).
+/// </summary>
+internal static class CloudError
+{
+    public static string Describe(string service, System.Net.HttpStatusCode status, string body, string scopeKey)
+    {
+        // 401/403 con el token: casi siempre es que el permiso de la carpeta no se concedio
+        // (Google lo enseña como una casilla que se puede dejar sin marcar).
+        if (status is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            return Localization.Loc.Get(scopeKey);
+
+        var message = string.Empty;
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var error))
+            {
+                if (error.ValueKind == JsonValueKind.Object && error.TryGetProperty("message", out var m))
+                    message = m.GetString() ?? string.Empty;
+                else if (error.ValueKind == JsonValueKind.String)
+                    message = error.GetString() ?? string.Empty;
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        if (message.Length == 0)
+            message = body.Length > 160 ? body[..160] + "…" : body;
+        return $"{service}: {(int)status} {message.ReplaceLineEndings(" ")}";
     }
 }

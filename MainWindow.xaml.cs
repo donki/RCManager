@@ -85,7 +85,9 @@ public partial class MainWindow : Window
             StatusText.Text = Loc.Get("Ready");
     }
 
-    private void SetStatus(string text) => StatusText.Text = text;
+    // Una sola linea pase lo que pase: un mensaje con saltos de linea hacia crecer la barra de
+    // estado hasta comerse la ventana.
+    private void SetStatus(string text) => StatusText.Text = text.ReplaceLineEndings(" ").Trim();
 
     // =====================================================================
     //  Arbol

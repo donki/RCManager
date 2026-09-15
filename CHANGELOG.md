@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.3 — La barra de estado ya no se come la ventana
+
+- Un error de la nube con el JSON entero (veinte líneas) hacía crecer la barra de estado hasta
+  dejar la ventana inutilizable al arrancar. Ahora la barra es de una línea y los errores de Google
+  Drive / OneDrive salen resumidos; un 401/403 se traduce a «vuelve a entrar y marca la casilla».
+
 ## 2026.9.15.2 — Aviso si Google entra sin el permiso de Drive
 
 - Google enseña cada permiso como una casilla; si la de Drive se queda sin marcar, la entrada
