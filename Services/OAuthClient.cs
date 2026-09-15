@@ -25,6 +25,11 @@ public sealed class OAuthTokens
     public string RefreshToken { get; set; } = string.Empty;
     public DateTimeOffset ExpiresAt { get; set; }
     public string IdToken { get; set; } = string.Empty;
+
+    /// <summary>Permisos que el usuario concedio de verdad (Google los enseña como casillas y puede dejar alguna sin marcar).</summary>
+    public string Scope { get; set; } = string.Empty;
+
+    public bool Has(string scope) => Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(scope, StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -167,6 +172,7 @@ public sealed class OAuthClient
             RefreshToken = root.TryGetProperty("refresh_token", out var r) ? r.GetString() ?? previousRefresh ?? string.Empty : previousRefresh ?? string.Empty,
             ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(root.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 3600),
             IdToken = root.TryGetProperty("id_token", out var id) ? id.GetString() ?? string.Empty : string.Empty,
+            Scope = root.TryGetProperty("scope", out var sc) ? sc.GetString() ?? string.Empty : string.Empty,
         };
     }
 

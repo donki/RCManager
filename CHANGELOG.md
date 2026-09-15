@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.2 — Aviso si Google entra sin el permiso de Drive
+
+- Google enseña cada permiso como una casilla; si la de Drive se queda sin marcar, la entrada
+  terminaba «bien» y la primera sincronización daba un 403. Ahora se comprueba lo concedido al
+  volver del navegador y se avisa: «vuelve a entrar y marca la casilla de Google Drive».
+
 ## 2026.9.15.1 — Cliente propio de Google
 
 - La entrada con Google (Drive) usa ya un cliente propio en el proyecto «sOC Remote Connections

@@ -1,4 +1,4 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Security.Cryptography;
 
 namespace SocRcManager.Services;
@@ -63,6 +63,14 @@ public sealed class CloudSync : IDisposable
     public async Task<string> SignInAsync(StorageMode mode, CancellationToken cancellationToken = default)
     {
         var tokens = await ClientFor(mode).SignInAsync(cancellationToken).ConfigureAwait(false);
+
+        // Google enseña cada permiso como una casilla: si la de Drive se queda sin marcar, la
+        // entrada termina bien pero el token no sirve para nada. Mejor decirlo aqui que un 403
+        // en la primera sincronizacion.
+        var required = mode == StorageMode.GoogleDrive ? "https://www.googleapis.com/auth/drive.appdata" : "Files.ReadWrite.AppFolder";
+        if (tokens.Scope.Length > 0 && !tokens.Has(required))
+            throw new InvalidOperationException(Localization.Loc.Get(mode == StorageMode.GoogleDrive ? "GoogleScopeMissing" : "MicrosoftScopeMissing"));
+
         _settings.Storage = mode;
         _settings.Tokens = tokens;
         _settings.AccountEmail = OAuthClient.EmailOf(tokens);
