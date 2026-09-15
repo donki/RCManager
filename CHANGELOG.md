@@ -1,9 +1,24 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.6 — Todas las opciones del cliente de Escritorio remoto, y el árbol como se dejó
+
+- **Editor de conexión con las pestañas de mstsc**: *General*, *Pantalla* (ajustar a la pestaña o
+  tamaño fijo, colores, todos los monitores, barra de conexión), *Recursos locales* (audio y
+  micrófono, teclas de Windows, impresoras, portapapeles, unidades, tarjetas inteligentes, puertos
+  serie, dispositivos Plug and Play), *Experiencia* (fondo, suavizado de fuentes, composición,
+  arrastre, animaciones, estilos visuales, caché de mapas de bits, reconexión automática) y
+  *Avanzado* (certificado del servidor, sesión de administración, puerta de enlace de Escritorio
+  remoto con sus credenciales o las mismas de la sesión). Valores por defecto: los de mstsc, salvo
+  las unidades (compartidas) y el tamaño (ajustado a la pestaña). Las conexiones importadas de
+  `.rdm` reciben esos valores por defecto.
+- **El árbol se conserva** al cerrar: carpetas abiertas, conexión seleccionada y ancho del panel
+  vuelven igual al abrir.
+- **Doble clic** sobre una conexión o carpeta abre su edición (conectar: botón o Intro).
+
 ## 2026.9.15.5 — Ficheros entre el PC y el escritorio remoto
 
 - **Unidades de este PC en el remoto** (opción por conexión, activada por defecto): en el escritorio
-  remoto aparecen como «C en <tu PC>» en *Este equipo* (y como `\tsclient\C`), con lo que se copian
+  remoto aparecen como «C en <tu PC>» en *Este equipo* (y como `\\tsclient\C`), con lo que se copian
   y mueven ficheros con el Explorador en los dos sentidos. Los USB que se enchufen durante la sesión
   también.
 - El portapapeles compartido ya llevaba ficheros (Ctrl+C en un Explorador, Ctrl+V en el otro); ahora

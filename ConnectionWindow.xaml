@@ -1,110 +1,272 @@
-﻿<Window x:Class="SocRcManager.ConnectionWindow"
+<Window x:Class="SocRcManager.ConnectionWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:SocRcManager.Localization"
         Title="{loc:T EditTitle}"
-        Width="520" SizeToContent="Height"
-        ResizeMode="NoResize" ShowInTaskbar="False"
+        Width="560" Height="720" MinWidth="520" MinHeight="600"
+        ResizeMode="CanResize" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource PageBackground}">
 
-    <StackPanel Margin="16">
-        <Border Style="{StaticResource Card}" Padding="18,12,18,16">
-            <StackPanel>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="150" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="{loc:T Name}" Style="{StaticResource FieldLabel}" />
-                        <TextBox x:Name="NameBox" Style="{StaticResource Field}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="{loc:T Kind}" Style="{StaticResource FieldLabel}" />
-                        <ComboBox x:Name="KindBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34"
-                                  SelectionChanged="OnKindChanged">
-                            <ComboBoxItem Content="RDP" />
-                            <ComboBoxItem Content="SSH" />
-                        </ComboBox>
-                    </StackPanel>
-                </Grid>
+    <!-- Las mismas pestañas que el cliente de Escritorio remoto de Windows (mstsc): General,
+         Pantalla, Recursos locales, Experiencia y Avanzado. Con SSH solo se ve General. -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-                <TextBlock Text="{loc:T Folder}" Style="{StaticResource FieldLabel}" />
-                <ComboBox x:Name="FolderBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34" IsEditable="True" />
+        <TabControl x:Name="Sections" Grid.Row="0" Background="Transparent" BorderThickness="0" Padding="0">
+            <TabControl.Resources>
+                <Style TargetType="TabItem" BasedOn="{StaticResource SessionTab}" />
+            </TabControl.Resources>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="110" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="{loc:T Host}" Style="{StaticResource FieldLabel}" />
-                        <TextBox x:Name="HostBox" Style="{StaticResource Field}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="{loc:T Port}" Style="{StaticResource FieldLabel}" />
-                        <TextBox x:Name="PortBox" Style="{StaticResource Field}" />
-                    </StackPanel>
-                </Grid>
+            <!-- ============================ General ============================ -->
+            <TabItem x:Name="GeneralTab" Header="{loc:T TabGeneral}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Padding="18,12,18,16" Margin="0,8,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="150" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{loc:T Name}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="NameBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{loc:T Kind}" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox x:Name="KindBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34"
+                                              SelectionChanged="OnKindChanged">
+                                        <ComboBoxItem Content="RDP" />
+                                        <ComboBoxItem Content="SSH" />
+                                    </ComboBox>
+                                </StackPanel>
+                            </Grid>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="{loc:T UserName}" Style="{StaticResource FieldLabel}" />
-                        <TextBox x:Name="UserBox" Style="{StaticResource Field}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" x:Name="DomainPanel">
-                        <TextBlock Text="{loc:T Domain}" Style="{StaticResource FieldLabel}" />
-                        <TextBox x:Name="DomainBox" Style="{StaticResource Field}" />
-                    </StackPanel>
-                </Grid>
+                            <TextBlock Text="{loc:T Folder}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="FolderBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34" IsEditable="True" />
 
-                <TextBlock Text="{loc:T Password}" Style="{StaticResource FieldLabel}" />
-                <PasswordBox x:Name="PasswordBox" Style="{StaticResource PasswordField}" />
-                <TextBlock Text="{loc:T PasswordHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="110" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{loc:T Host}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="HostBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{loc:T Port}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="PortBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                            </Grid>
 
-                <StackPanel x:Name="SshPanel">
-                    <TextBlock Text="{loc:T PrivateKey}" Style="{StaticResource FieldLabel}" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="KeyBox" Grid.Column="0" Style="{StaticResource Field}" />
-                        <Button x:Name="BrowseButton" Grid.Column="1" Style="{StaticResource GhostIconButton}" Content="&#xE8E5;"
-                                ToolTip="{loc:T BrowseTooltip}" Click="OnBrowseClick" />
-                    </Grid>
-                    <TextBlock Text="{loc:T PrivateKeyHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" />
-                </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{loc:T UserName}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="UserBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" x:Name="DomainPanel">
+                                    <TextBlock Text="{loc:T Domain}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="DomainBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                            </Grid>
 
-                <StackPanel x:Name="RdpPanel">
-                    <CheckBox x:Name="SmartSizingBox" Style="{StaticResource Check}" Content="{loc:T RdpSmartSizing}" Margin="0,14,0,0" />
-                    <CheckBox x:Name="ClipboardBox" Style="{StaticResource Check}" Content="{loc:T RdpClipboard}" />
-                    <CheckBox x:Name="DrivesBox" Style="{StaticResource Check}" Content="{loc:T RdpDrives}" />
-                </StackPanel>
+                            <TextBlock Text="{loc:T Password}" Style="{StaticResource FieldLabel}" />
+                            <PasswordBox x:Name="PasswordBox" Style="{StaticResource PasswordField}" />
+                            <TextBlock Text="{loc:T PasswordHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" />
 
-                <TextBlock Text="{loc:T Notes}" Style="{StaticResource FieldLabel}" />
-                <TextBox x:Name="NotesBox" Style="{StaticResource Field}" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
-                         VerticalContentAlignment="Top" Padding="8,6" />
-            </StackPanel>
-        </Border>
+                            <StackPanel x:Name="SshPanel">
+                                <TextBlock Text="{loc:T PrivateKey}" Style="{StaticResource FieldLabel}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="KeyBox" Grid.Column="0" Style="{StaticResource Field}" />
+                                    <Button x:Name="BrowseButton" Grid.Column="1" Style="{StaticResource GhostIconButton}" Content="&#xE8E5;"
+                                            ToolTip="{loc:T BrowseTooltip}" Click="OnBrowseClick" />
+                                </Grid>
+                                <TextBlock Text="{loc:T PrivateKeyHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" />
+                            </StackPanel>
 
-        <Grid Margin="0,12,0,0">
+                            <TextBlock Text="{loc:T Notes}" Style="{StaticResource FieldLabel}" />
+                            <TextBox x:Name="NotesBox" Style="{StaticResource Field}" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top" Padding="8,6" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================ Pantalla ============================ -->
+            <TabItem x:Name="DisplayTab" Header="{loc:T TabDisplay}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Padding="18,12,18,16" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{loc:T RdpSizeTitle}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="SizeBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34" SelectionChanged="OnSizeChanged">
+                                <ComboBoxItem Content="{loc:T RdpSizeFit}" />
+                                <ComboBoxItem Content="1024 × 768" />
+                                <ComboBoxItem Content="1280 × 800" />
+                                <ComboBoxItem Content="1366 × 768" />
+                                <ComboBoxItem Content="1600 × 900" />
+                                <ComboBoxItem Content="1920 × 1080" />
+                                <ComboBoxItem Content="1920 × 1200" />
+                                <ComboBoxItem Content="2560 × 1440" />
+                                <ComboBoxItem Content="{loc:T RdpSizeCustom}" />
+                            </ComboBox>
+                            <Grid x:Name="CustomSizePanel" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{loc:T RdpWidth}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="WidthBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{loc:T RdpHeight}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="HeightBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="{loc:T RdpSizeHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+
+                            <TextBlock Text="{loc:T RdpColorDepth}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="ColorBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                <ComboBoxItem Content="{loc:T RdpColor15}" />
+                                <ComboBoxItem Content="{loc:T RdpColor16}" />
+                                <ComboBoxItem Content="{loc:T RdpColor24}" />
+                                <ComboBoxItem Content="{loc:T RdpColor32}" />
+                            </ComboBox>
+
+                            <CheckBox x:Name="MultiMonitorBox" Style="{StaticResource Check}" Content="{loc:T RdpMultiMonitor}" Margin="0,14,0,0" />
+                            <CheckBox x:Name="ConnectionBarBox" Style="{StaticResource Check}" Content="{loc:T RdpConnectionBar}" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================ Recursos locales ============================ -->
+            <TabItem x:Name="ResourcesTab" Header="{loc:T TabResources}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Padding="18,12,18,16" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{loc:T RdpAudio}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="AudioBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                <ComboBoxItem Content="{loc:T RdpAudioLocal}" />
+                                <ComboBoxItem Content="{loc:T RdpAudioRemote}" />
+                                <ComboBoxItem Content="{loc:T RdpAudioNone}" />
+                            </ComboBox>
+                            <CheckBox x:Name="AudioCaptureBox" Style="{StaticResource Check}" Content="{loc:T RdpAudioCapture}" />
+
+                            <TextBlock Text="{loc:T RdpKeyboard}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="KeyboardBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                <ComboBoxItem Content="{loc:T RdpKeyboardLocal}" />
+                                <ComboBoxItem Content="{loc:T RdpKeyboardRemote}" />
+                                <ComboBoxItem Content="{loc:T RdpKeyboardFullScreen}" />
+                            </ComboBox>
+
+                            <TextBlock Text="{loc:T RdpDevicesTitle}" Style="{StaticResource FieldLabel}" Margin="0,16,0,0" />
+                            <CheckBox x:Name="PrintersBox" Style="{StaticResource Check}" Content="{loc:T RdpPrinters}" />
+                            <CheckBox x:Name="ClipboardBox" Style="{StaticResource Check}" Content="{loc:T RdpClipboard}" />
+                            <CheckBox x:Name="DrivesBox" Style="{StaticResource Check}" Content="{loc:T RdpDrives}" />
+                            <CheckBox x:Name="SmartCardsBox" Style="{StaticResource Check}" Content="{loc:T RdpSmartCards}" />
+                            <CheckBox x:Name="PortsBox" Style="{StaticResource Check}" Content="{loc:T RdpPorts}" />
+                            <CheckBox x:Name="DevicesBox" Style="{StaticResource Check}" Content="{loc:T RdpDevices}" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================ Experiencia ============================ -->
+            <TabItem x:Name="ExperienceTab" Header="{loc:T TabExperience}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Padding="18,12,18,16" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{loc:T RdpExperienceTitle}" Style="{StaticResource FieldLabel}" />
+                            <CheckBox x:Name="WallpaperBox" Style="{StaticResource Check}" Content="{loc:T RdpWallpaper}" />
+                            <CheckBox x:Name="FontSmoothingBox" Style="{StaticResource Check}" Content="{loc:T RdpFontSmoothing}" />
+                            <CheckBox x:Name="CompositionBox" Style="{StaticResource Check}" Content="{loc:T RdpComposition}" />
+                            <CheckBox x:Name="WindowDragBox" Style="{StaticResource Check}" Content="{loc:T RdpWindowDrag}" />
+                            <CheckBox x:Name="MenuAnimationBox" Style="{StaticResource Check}" Content="{loc:T RdpMenuAnimation}" />
+                            <CheckBox x:Name="VisualStylesBox" Style="{StaticResource Check}" Content="{loc:T RdpVisualStyles}" />
+                            <CheckBox x:Name="BitmapCacheBox" Style="{StaticResource Check}" Content="{loc:T RdpBitmapCache}" />
+
+                            <TextBlock Text="{loc:T RdpReconnectTitle}" Style="{StaticResource FieldLabel}" Margin="0,16,0,0" />
+                            <CheckBox x:Name="AutoReconnectBox" Style="{StaticResource Check}" Content="{loc:T RdpAutoReconnect}" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================ Avanzado ============================ -->
+            <TabItem x:Name="AdvancedTab" Header="{loc:T TabAdvanced}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Padding="18,12,18,16" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{loc:T RdpAuthLevel}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="AuthBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                <ComboBoxItem Content="{loc:T RdpAuthConnect}" />
+                                <ComboBoxItem Content="{loc:T RdpAuthWarn}" />
+                                <ComboBoxItem Content="{loc:T RdpAuthRefuse}" />
+                            </ComboBox>
+                            <CheckBox x:Name="AdminBox" Style="{StaticResource Check}" Content="{loc:T RdpAdminSession}" />
+
+                            <TextBlock Text="{loc:T RdpGatewayTitle}" Style="{StaticResource FieldLabel}" Margin="0,16,0,0" />
+                            <ComboBox x:Name="GatewayModeBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34" SelectionChanged="OnGatewayChanged">
+                                <ComboBoxItem Content="{loc:T RdpGatewayNone}" />
+                                <ComboBoxItem Content="{loc:T RdpGatewayAlways}" />
+                                <ComboBoxItem Content="{loc:T RdpGatewayBypassLocal}" />
+                            </ComboBox>
+                            <StackPanel x:Name="GatewayPanel">
+                                <TextBlock Text="{loc:T RdpGatewayHost}" Style="{StaticResource FieldLabel}" />
+                                <TextBox x:Name="GatewayHostBox" Style="{StaticResource Field}" />
+                                <CheckBox x:Name="GatewaySameBox" Style="{StaticResource Check}" Content="{loc:T RdpGatewaySame}" Checked="OnGatewayChanged" Unchecked="OnGatewayChanged" />
+                                <StackPanel x:Name="GatewayCredsPanel">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:T UserName}" Style="{StaticResource FieldLabel}" />
+                                            <TextBox x:Name="GatewayUserBox" Style="{StaticResource Field}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:T Domain}" Style="{StaticResource FieldLabel}" />
+                                            <TextBox x:Name="GatewayDomainBox" Style="{StaticResource Field}" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="{loc:T Password}" Style="{StaticResource FieldLabel}" />
+                                    <PasswordBox x:Name="GatewayPasswordBox" Style="{StaticResource PasswordField}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Grid Grid.Row="1" Margin="0,12,0,0">
             <TextBlock x:Name="StatusText" Style="{StaticResource HintText}" VerticalAlignment="Center"
                        Foreground="{DynamicResource Danger}" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="CancelButton" Style="{StaticResource GhostIconButton}" Content="&#xE711;"
-                        ToolTip="{loc:T Cancel}" Click="OnCancelClick" />
+                        ToolTip="{loc:T Cancel}" Click="OnCancelClick" IsCancel="True" />
                 <Button x:Name="SaveButton" Style="{StaticResource IconButton}" Content="&#xE74E;"
                         ToolTip="{loc:T Save}" Click="OnSaveClick" IsDefault="True" />
             </StackPanel>
         </Grid>
-    </StackPanel>
+    </Grid>
 </Window>

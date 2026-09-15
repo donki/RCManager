@@ -11,16 +11,25 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
 ## Qué hace
 
 - **Árbol de conexiones** con carpetas anidadas, buscador (por nombre, servidor, usuario, carpeta o
-  notas), alta, edición, duplicado y borrado. Doble clic o Intro para conectar; Supr para borrar.
+  notas), alta, edición, duplicado y borrado. Doble clic edita; el botón ⇒ o Intro conectan; Supr
+  borra. Se arrastran conexiones y carpetas a otra carpeta. El árbol se conserva al cerrar (carpetas
+  abiertas, selección, ancho del panel).
 - **RDP** dentro de la pestaña, con el control de Escritorio remoto que trae Windows (el mismo que
-  `mstsc.exe`): el escritorio se ajusta al tamaño de la pestaña, portapapeles compartido, dominio y
-  puerto configurables.
+  `mstsc.exe`) y **todas sus opciones**, en las mismas pestañas que mstsc: *Pantalla* (ajustar a la
+  pestaña con resolución dinámica, o tamaño fijo; colores; todos los monitores; barra de conexión),
+  *Recursos locales* (audio y micrófono, teclas de Windows, impresoras, portapapeles con ficheros,
+  unidades del PC —«C en tu PC» en el remoto, para copiar y mover ficheros—, tarjetas
+  inteligentes, puertos serie, dispositivos Plug and Play), *Experiencia* (efectos visuales, caché,
+  reconexión automática) y *Avanzado* (certificado, sesión de administración, puerta de enlace de
+  Escritorio remoto). Pantalla completa nativa con la barra de mstsc. Las conexiones importadas de
+  `.rdm` reciben los valores por defecto.
 - **SSH** dentro de la pestaña, con [SSH.NET](https://github.com/sshnet/SSH.NET) y un terminal
   propio: colores de 16 y 256, cursor, regiones de scroll, pantalla alternativa (vim, htop, less),
   historial (rueda del ratón o Mayús+RePág/AvPág), copiar y pegar (Ctrl+Mayús+C / Ctrl+Mayús+V, o
   botón derecho: pega si no hay selección y copia si la hay). El shell se redimensiona con la
   ventana. Se entra con contraseña o con clave privada (OpenSSH/PEM, con o sin frase).
-- Si una conexión no tiene contraseña guardada, se pide al conectar y no se guarda.
+- Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
+  (cifrada con DPAPI para el usuario de Windows).
 - **Importar desde Remote Desktop Manager**: botón ⇥ de la barra del árbol; lee un `.rdm` exportado
   y conserva sus carpetas. Las contraseñas de RDM no se importan (van cifradas con su clave).
 - **Dónde se guardan** (Ajustes ⚙): en este PC, o en Google Drive / OneDrive entrando con tu cuenta.
@@ -71,6 +80,5 @@ dentro (se pide confirmación y queda el `.bak`).
 
 - Probar RDP contra un servidor real (el control de Windows no deja conectar con el propio equipo,
   y en la red de desarrollo no había otro).
-- Arrastrar conexiones entre carpetas.
 - Importar desde `.rdp` y desde otros gestores (RDM ya está).
 - Paquete MSIX y ficha de Microsoft Store.

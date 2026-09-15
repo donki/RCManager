@@ -34,7 +34,12 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => ThemeManager.ApplyToWindow(this);
 
         _store.Load();
+        if (_settings.TreeWidth >= 200)
+            TreeColumn.Width = new GridLength(_settings.TreeWidth);
+        _restoreTree = true;
         BuildTree();
+        _restoreTree = false;
+        Loaded += (_, _) => (Tree.SelectedItem as TreeViewItem)?.BringIntoView();
 
         // Con la nube elegida, al arrancar se baja lo que haya (si es mas nuevo) y cada guardado
         // se sube detras. Todo cifrado con la frase del usuario (CloudSync).
@@ -61,6 +66,7 @@ public partial class MainWindow : Window
             foreach (var (_, session, _) in _open.ToList())
                 session.Disconnect();
             _sync.Dispose();
+            SaveTreeState();
         };
     }
 
@@ -101,12 +107,35 @@ public partial class MainWindow : Window
         public bool IsFolder => FolderPath is not null;
     }
 
+    private bool _restoreTree;
+
+    /// <summary>Carpetas abiertas, seleccion y ancho del panel, para encontrarlo igual al volver a abrir.</summary>
+    private void SaveTreeState()
+    {
+        _settings.ExpandedFolders = Tree.Items.OfType<TreeViewItem>().SelectMany(Flatten)
+            .Where(i => i.IsExpanded && i.Tag is Node { IsFolder: true })
+            .Select(i => ((Node)i.Tag).FolderPath!).ToList();
+        _settings.SelectedConnectionId = Selected?.Connection?.Id;
+        _settings.TreeWidth = _fullScreen ? _treeWidthBeforeFullScreen.Value : TreeColumn.Width.Value;
+        _settings.Save();
+    }
+
     private void BuildTree()
     {
         var filter = SearchBox.Text.Trim();
         var expanded = Tree.Items.OfType<TreeViewItem>().SelectMany(Flatten).Where(i => i.IsExpanded && i.Tag is Node { IsFolder: true })
             .Select(i => ((Node)i.Tag).FolderPath!).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var selected = (Tree.SelectedItem as TreeViewItem)?.Tag as Node;
+        var allExpanded = expanded.Count == 0;
+
+        // Primer arbol de la sesion: como se dejo al cerrar la ultima vez.
+        if (_restoreTree && _settings.ExpandedFolders is { } saved)
+        {
+            expanded = saved.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            allExpanded = false;
+            if (_settings.SelectedConnectionId is { } id && _store.Connections.FirstOrDefault(c => c.Id == id) is { } c)
+                selected = new Node { Connection = c };
+        }
 
         Tree.Items.Clear();
         var folders = new Dictionary<string, TreeViewItem>(StringComparer.OrdinalIgnoreCase);
@@ -124,7 +153,7 @@ public partial class MainWindow : Window
                 Style = (Style)FindResource("TreeItem"),
                 Header = Header("", name),
                 Tag = new Node { FolderPath = path },
-                IsExpanded = filter.Length > 0 || expanded.Count == 0 || expanded.Contains(path),
+                IsExpanded = filter.Length > 0 || allExpanded || expanded.Contains(path),
             };
             folders[path] = item;
 
@@ -378,10 +407,14 @@ public partial class MainWindow : Window
         BuildTree();
     }
 
-    private async void OnTreeDoubleClick(object sender, MouseButtonEventArgs e)
+    // Doble clic sobre una fila: editarla (conexion) o renombrarla (carpeta). Conectar es el boton
+    // o Intro, para que un doble clic despistado no abra sesiones.
+    private void OnTreeDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (Selected?.Connection is { } c)
-            await OpenAsync(c);
+        if (ItemAt(e.OriginalSource as DependencyObject) is null || Selected is null)
+            return;
+        e.Handled = true;
+        OnEditClick(sender, e);
     }
 
     private async void OnTreeKeyDown(object sender, KeyEventArgs e)

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -31,6 +31,12 @@ public sealed class AppSettings
 
     /// <summary>Cuando se sincronizo por ultima vez con exito.</summary>
     public DateTimeOffset? LastSyncAt { get; set; }
+
+    // El arbol tal como se dejo al cerrar: carpetas abiertas (null = nunca guardado, todo abierto),
+    // conexion seleccionada y ancho del panel.
+    public List<string>? ExpandedFolders { get; set; }
+    public Guid? SelectedConnectionId { get; set; }
+    public double TreeWidth { get; set; }
 
     [JsonIgnore]
     public OAuthTokens? Tokens

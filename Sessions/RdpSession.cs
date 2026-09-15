@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Forms.Integration;
 using SocRcManager.Models;
+using SocRcManager.Services;
 
 namespace SocRcManager.Sessions;
 
@@ -78,7 +79,7 @@ public sealed class RdpSession : ISession
     /// <summary>Pide al servidor el tamaño de escritorio que cabe ahora en la pestaña.</summary>
     private void ApplyDisplaySize()
     {
-        if (!_connected || _rdp.FullScreen)
+        if (!_connected || _rdp.FullScreen || !_connection.RdpSmartSizing || _connection.RdpWidth > 0)
             return;
         var (w, h) = PixelSize();
         try
@@ -106,33 +107,92 @@ public sealed class RdpSession : ISession
         if (_connection.Domain.Length > 0)
             _rdp.Domain = _connection.Domain;
 
+        var c = _connection;
         var advanced = (MSTSCLib.IMsRdpClientAdvancedSettings8)_rdp.AdvancedSettings9;
-        advanced.RDPPort = _connection.Port;
+        advanced.RDPPort = c.Port;
         advanced.ClearTextPassword = password;
-        advanced.SmartSizing = _connection.RdpSmartSizing;
         advanced.EnableCredSspSupport = true;
-        advanced.AuthenticationLevel = 0;   // no parar por el certificado del servidor: se avisa, no se bloquea
-        // Portapapeles (texto, imagenes y ficheros: Ctrl+C / Ctrl+V entre los dos Exploradores) y
-        // unidades del PC dentro del remoto (para copiar y mover con el Explorador).
-        advanced.RedirectClipboard = _connection.RdpClipboard;
-        advanced.RedirectDrives = _connection.RdpDrives;
-        if (_connection.RdpDrives && _rdp.GetOcx() is MSTSCLib.IMsRdpClientNonScriptable5 nonScriptable)
-            nonScriptable.RedirectDynamicDrives = true;   // tambien los USB que se enchufen durante la sesion
 
+        // --- Pantalla ---
+        advanced.SmartSizing = c.RdpSmartSizing;
+        _rdp.ColorDepth = c.RdpColorDepth is 15 or 16 or 24 or 32 ? c.RdpColorDepth : 32;
         // Pantalla completa gestionada por el control, con la barra de conexion de mstsc arriba
         // (se oculta sola; al acercar el raton al borde superior vuelve, con minimizar/restaurar/cerrar).
         advanced.ContainerHandledFullScreen = 0;
-        advanced.DisplayConnectionBar = true;
+        advanced.DisplayConnectionBar = c.RdpConnectionBar;
         advanced.PinConnectionBar = false;
-        advanced.ConnectToServerConsole = false;
-        _rdp.FullScreenTitle = _connection.Name;
+        advanced.ConnectionBarShowMinimizeButton = true;
+        advanced.ConnectionBarShowRestoreButton = true;
+        _rdp.FullScreenTitle = c.Name;
 
-        // Tamaño del escritorio: el de la pestaña ahora mismo, en pixeles fisicos. Luego sigue
-        // a la ventana (resolucion dinamica) y, si el servidor no lo admite, SmartSizing lo escala.
-        var (width, height) = PixelSize();
+        // Tamaño del escritorio: el fijo elegido o, si no, el de la pestaña ahora mismo en pixeles
+        // fisicos. Con «ajustar a la pestaña» luego sigue a la ventana (resolucion dinamica) y,
+        // si el servidor no lo admite, SmartSizing lo escala.
+        var (width, height) = c.RdpWidth > 0 && c.RdpHeight > 0 ? (c.RdpWidth, c.RdpHeight) : PixelSize();
         _rdp.DesktopWidth = width;
         _rdp.DesktopHeight = height;
-        _rdp.ColorDepth = 32;
+
+        // --- Recursos locales ---
+        advanced.AudioRedirectionMode = (uint)Math.Clamp(c.RdpAudioMode, 0, 2);
+        advanced.AudioCaptureRedirectionMode = c.RdpAudioCapture;
+        ((MSTSCLib.IMsRdpClientSecuredSettings2)_rdp.SecuredSettings2).KeyboardHookMode = Math.Clamp(c.RdpKeyboardMode, 0, 2);
+        advanced.EnableWindowsKey = 1;
+        advanced.RedirectPrinters = c.RdpPrinters;
+        // Portapapeles (texto, imagenes y ficheros: Ctrl+C / Ctrl+V entre los dos Exploradores) y
+        // unidades del PC dentro del remoto (para copiar y mover con el Explorador).
+        advanced.RedirectClipboard = c.RdpClipboard;
+        advanced.RedirectDrives = c.RdpDrives;
+        advanced.RedirectSmartCards = c.RdpSmartCards;
+        advanced.RedirectPorts = c.RdpPorts;
+        advanced.RedirectDevices = c.RdpDevices;
+        if (_rdp.GetOcx() is MSTSCLib.IMsRdpClientNonScriptable5 nonScriptable)
+        {
+            nonScriptable.RedirectDynamicDrives = c.RdpDrives;     // tambien los USB que se enchufen durante la sesion
+            nonScriptable.RedirectDynamicDevices = c.RdpDevices;
+            nonScriptable.UseMultimon = c.RdpMultiMonitor;
+            nonScriptable.WarnAboutClipboardRedirection = false;
+            nonScriptable.WarnAboutPrinterRedirection = false;
+            nonScriptable.WarnAboutSendingCredentials = false;
+        }
+
+        // --- Experiencia --- (los bits de TS_PERF_*: los que estan a 1 DESACTIVAN la cosa, salvo los dos ultimos)
+        var flags = 0u;
+        if (!c.RdpWallpaper) flags |= 0x01;            // TS_PERF_DISABLE_WALLPAPER
+        if (!c.RdpWindowDrag) flags |= 0x02;           // TS_PERF_DISABLE_FULLWINDOWDRAG
+        if (!c.RdpMenuAnimation) flags |= 0x04;        // TS_PERF_DISABLE_MENUANIMATIONS
+        if (!c.RdpVisualStyles) flags |= 0x08;         // TS_PERF_DISABLE_THEMING
+        if (c.RdpFontSmoothing) flags |= 0x80;         // TS_PERF_ENABLE_FONT_SMOOTHING
+        if (c.RdpDesktopComposition) flags |= 0x100;   // TS_PERF_ENABLE_DESKTOP_COMPOSITION
+        advanced.PerformanceFlags = (int)flags;
+        advanced.BitmapPersistence = c.RdpBitmapCache ? 1 : 0;
+        advanced.EnableAutoReconnect = c.RdpAutoReconnect;
+        advanced.MaxReconnectAttempts = 20;
+
+        // --- Avanzado ---
+        advanced.AuthenticationLevel = (uint)Math.Clamp(c.RdpAuthLevel, 0, 2);
+        advanced.ConnectToAdministerServer = c.RdpAdminSession;
+        advanced.ConnectToServerConsole = false;
+
+        var gateway = (MSTSCLib.IMsRdpClientTransportSettings2)_rdp.TransportSettings2;
+        if (c.RdpGatewayMode != 0 && c.RdpGatewayHost.Length > 0)
+        {
+            gateway.GatewayHostname = c.RdpGatewayHost;
+            gateway.GatewayUsageMethod = c.RdpGatewayMode == 1 ? 1u : 2u;   // 1 = siempre, 2 = detectar (no para direcciones locales)
+            gateway.GatewayProfileUsageMethod = 1;                            // ajustes explicitos, no los del sistema
+            gateway.GatewayCredsSource = 0;                                   // usuario y contraseña
+            gateway.GatewayUserSelectedCredsSource = 0;
+            gateway.GatewayCredSharing = c.RdpGatewaySameCredentials ? 1u : 0u;
+            if (!c.RdpGatewaySameCredentials)
+            {
+                gateway.GatewayUsername = c.RdpGatewayUserName;
+                gateway.GatewayDomain = c.RdpGatewayDomain;
+                gateway.GatewayPassword = Secrets.Unprotect(c.RdpGatewayPasswordProtected);
+            }
+        }
+        else
+        {
+            gateway.GatewayUsageMethod = 0;
+        }
 
         _rdp.Connect();
         return Task.CompletedTask;

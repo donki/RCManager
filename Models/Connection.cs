@@ -37,18 +37,88 @@ public sealed class Connection
 
     public string Notes { get; set; } = string.Empty;
 
-    /// <summary>RDP: el escritorio se adapta al tamaño de la pestaña (si no, 1920x1080 con barras).</summary>
+    // ------------------------------------------------------------------ RDP: las opciones del
+    // cliente de Windows (mstsc), pestaña a pestaña. Los valores por defecto son los de mstsc,
+    // salvo las unidades (aqui si, para mover ficheros) y la pantalla (ajustada a la pestaña).
+
+    // --- Pantalla ---
+
+    /// <summary>El escritorio remoto sigue al tamaño de la pestaña (resolucion dinamica; si el servidor no puede, escalado).</summary>
     public bool RdpSmartSizing { get; set; } = true;
 
-    /// <summary>RDP: llevar el portapapeles.</summary>
+    /// <summary>Tamaño fijo del escritorio cuando no se ajusta a la pestaña (0 = el de la pestaña al conectar).</summary>
+    public int RdpWidth { get; set; }
+    public int RdpHeight { get; set; }
+
+    /// <summary>Bits por pixel: 15, 16, 24 o 32.</summary>
+    public int RdpColorDepth { get; set; } = 32;
+
+    /// <summary>Pantalla completa en todos los monitores.</summary>
+    public bool RdpMultiMonitor { get; set; }
+
+    /// <summary>La barra de conexion de arriba en pantalla completa.</summary>
+    public bool RdpConnectionBar { get; set; } = true;
+
+    // --- Recursos locales ---
+
+    /// <summary>Audio remoto: 0 = reproducir en este PC, 1 = en el remoto, 2 = no reproducir.</summary>
+    public int RdpAudioMode { get; set; }
+
+    /// <summary>Grabar desde este PC (microfono) en el remoto.</summary>
+    public bool RdpAudioCapture { get; set; }
+
+    /// <summary>Teclas de Windows (Alt+Tab…): 0 = en este PC, 1 = en el remoto, 2 = en el remoto solo a pantalla completa.</summary>
+    public int RdpKeyboardMode { get; set; } = 2;
+
+    public bool RdpPrinters { get; set; } = true;
+
+    /// <summary>Portapapeles: texto, imagenes y ficheros (Ctrl+C en un Explorador, Ctrl+V en el otro).</summary>
     public bool RdpClipboard { get; set; } = true;
 
     /// <summary>
-    /// RDP: las unidades de este PC se ven en el remoto («C en <i>equipo</i>» en Este equipo,
-    /// <c>\tsclient\C</c>): asi se copian y mueven ficheros con el Explorador en los dos sentidos.
-    /// (Copiar y pegar ficheros por el portapapeles va con <see cref="RdpClipboard"/>.)
+    /// Las unidades de este PC se ven en el remoto («C en <i>equipo</i>» en Este equipo,
+    /// <c>\\tsclient\C</c>): asi se copian y mueven ficheros con el Explorador en los dos sentidos.
     /// </summary>
     public bool RdpDrives { get; set; } = true;
+
+    public bool RdpSmartCards { get; set; } = true;
+
+    /// <summary>Puertos serie.</summary>
+    public bool RdpPorts { get; set; }
+
+    /// <summary>Otros dispositivos Plug and Play (camaras, reproductores…).</summary>
+    public bool RdpDevices { get; set; }
+
+    // --- Experiencia ---
+
+    public bool RdpWallpaper { get; set; } = true;
+    public bool RdpFontSmoothing { get; set; } = true;
+    public bool RdpDesktopComposition { get; set; } = true;
+    public bool RdpWindowDrag { get; set; } = true;
+    public bool RdpMenuAnimation { get; set; } = true;
+    public bool RdpVisualStyles { get; set; } = true;
+    public bool RdpBitmapCache { get; set; } = true;
+    public bool RdpAutoReconnect { get; set; } = true;
+
+    // --- Avanzado ---
+
+    /// <summary>Certificado del servidor: 0 = conectar sin avisar, 1 = avisar, 2 = no conectar.</summary>
+    public int RdpAuthLevel { get; set; } = 1;
+
+    /// <summary>Sesion de administracion (la consola, /admin).</summary>
+    public bool RdpAdminSession { get; set; }
+
+    /// <summary>Puerta de enlace de Escritorio remoto: 0 = no usar, 1 = usar siempre, 2 = no usarla para direcciones locales.</summary>
+    public int RdpGatewayMode { get; set; }
+    public string RdpGatewayHost { get; set; } = string.Empty;
+
+    /// <summary>La puerta de enlace usa el mismo usuario y contraseña que el escritorio remoto.</summary>
+    public bool RdpGatewaySameCredentials { get; set; } = true;
+    public string RdpGatewayUserName { get; set; } = string.Empty;
+    public string RdpGatewayDomain { get; set; } = string.Empty;
+
+    /// <summary>Contraseña de la puerta de enlace, cifrada (<c>dpapi1:…</c>).</summary>
+    public string RdpGatewayPasswordProtected { get; set; } = string.Empty;
 
     public DateTime? LastConnectedAt { get; set; }
 
