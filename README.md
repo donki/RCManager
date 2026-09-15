@@ -47,9 +47,9 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
 Los clientes OAuth de Google y de Microsoft no van en el repositorio: se leen de
 `oauth.local.props` (ignorado; ver `oauth.props`) o de las variables `RC_GOOGLE_CLIENT_ID`,
 `RC_GOOGLE_CLIENT_SECRET` y `RC_MS_CLIENT_ID`. Sin ellos la aplicación compila igual y las opciones
-de nube aparecen desactivadas. Hoy se usan los mismos clientes que Task Manager (misma cuenta de
-desarrollador): la pantalla de consentimiento dice «TaskManager» hasta que se den de alta clientes
-propios.
+de nube aparecen desactivadas. Microsoft tiene registro propio en Entra desde el 2026-09-15; Google usa aún el cliente de Task Manager (misma cuenta de
+desarrollador): su pantalla de consentimiento dice «TaskManager» hasta que se dé de alta un cliente
+propio.
 
 ## Compilar
 

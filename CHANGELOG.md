@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.0 — Registro propio en Microsoft
+
+- La entrada con Microsoft (OneDrive) usa ya un registro de Entra propio: la pantalla de permisos
+  dice «sOC Remote Connections Manager» en vez de «Task Manager». Quien ya había entrado tiene que
+  volver a entrar una vez. (Google sigue con el cliente compartido hasta que haya uno propio.)
+
 ## 2026.9.14.2 — Pantalla completa de verdad, arrastrar en el árbol y contraseña al conectar
 
 - **Pantalla completa** desde el botón de la pestaña. RDP usa la del propio control de Windows
