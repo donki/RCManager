@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.1 — Cliente propio de Google
+
+- La entrada con Google (Drive) usa ya un cliente propio en el proyecto «sOC Remote Connections
+  Manager»: su pantalla de permisos deja de decir «TaskManager». Quien ya había entrado tiene que
+  volver a entrar una vez.
+
 ## 2026.9.15.0 — Registro propio en Microsoft
 
 - La entrada con Microsoft (OneDrive) usa ya un registro de Entra propio: la pantalla de permisos
