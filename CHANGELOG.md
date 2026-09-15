@@ -1,5 +1,15 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.15.8 — Permisos y propietario en servidores Linux
+
+- En el panel remoto de SFTP y FTP, cuando el servidor es Unix (el listado trae `rwx`), salen las
+  columnas *Permisos* y *Propietario* y un botón para cambiarlos: casillas leer/escribir/ejecutar
+  por propietario, grupo y otros con el octal a la vista, propietario y grupo por nombre o id, y
+  «aplicar a todo lo de dentro» en carpetas. SFTP cambia permisos por el propio protocolo y el
+  propietario por id; por nombre lanza `chown` por SSH con las mismas credenciales. FTP usa
+  `SITE CHMOD` (casi todos los servidores) y `SITE CHOWN` (solo algunos; si no, se avisa). En un
+  servidor Windows no aparece nada de esto.
+
 ## 2026.9.15.7 — Ficheros: SFTP/SCP y FTP/FTPS
 
 - **Dos tipos de conexión nuevos**: *SFTP / SCP* (por SSH, con contraseña o clave privada; opción

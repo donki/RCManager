@@ -42,14 +42,36 @@ public sealed class FtpFileSystem : IRemoteFileSystem
         return new FtpFileSystem(ftp, string.IsNullOrEmpty(initial) ? "/" : initial);
     }
 
+    /// <summary>Se sabe que es Unix cuando el listado trae permisos rwx (un IIS no los trae).</summary>
+    public bool SupportsPermissions { get; private set; }
+
     public async Task<IReadOnlyList<FileEntry>> ListAsync(string path, CancellationToken cancellationToken)
     {
         var items = await _ftp.GetListing(path, cancellationToken);
-        return items
+        var list = items
             .Where(i => i.Name is not ("." or ".."))
             .Select(i => new FileEntry(i.Name, i.FullName, i.Type is FtpObjectType.Directory or FtpObjectType.Link, i.Size,
-                i.Modified == DateTime.MinValue ? null : i.Modified))
+                i.Modified == DateTime.MinValue ? null : i.Modified,
+                i.Chmod > 0 || !string.IsNullOrEmpty(i.RawPermissions) ? Convert.ToInt32(i.Chmod.ToString(), 8) : null,   // 644 -> bits
+                string.IsNullOrEmpty(i.RawOwner) ? null : i.RawOwner,
+                string.IsNullOrEmpty(i.RawGroup) ? null : i.RawGroup))
             .ToList();
+        if (list.Any(e => e.Mode is not null))
+            SupportsPermissions = true;
+        return list;
+    }
+
+    /// <summary>SITE CHMOD, que entienden casi todos los servidores Unix.</summary>
+    public Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken) =>
+        _ftp.Chmod(path, Convert.ToInt32(Convert.ToString(mode, 8)), cancellationToken);
+
+    /// <summary>SITE CHOWN: solo lo admiten algunos servidores (ProFTPD con mod_site_misc, pure-ftpd…); si no, se dice.</summary>
+    public async Task ChangeOwnerAsync(string path, string owner, string group, CancellationToken cancellationToken)
+    {
+        var spec = group.Length > 0 ? $"{owner}:{group}" : owner;
+        var reply = await _ftp.Execute($"SITE CHOWN {spec} {path}", cancellationToken);
+        if (!reply.Success)
+            throw new IOException(reply.Message.Length > 0 ? reply.Message : "SITE CHOWN");
     }
 
     public async Task DownloadAsync(string remotePath, string localPath, IProgress<long> progress, CancellationToken cancellationToken)

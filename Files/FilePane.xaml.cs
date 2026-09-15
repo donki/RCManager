@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,6 +14,8 @@ public sealed class FileRow(FileEntry entry)
     public string Glyph => Entry.IsDirectory ? "" : "";
     public string SizeText => Entry.IsDirectory ? string.Empty : Format(Entry.Size);
     public string DateText => Entry.Modified?.ToString("g", CultureInfo.CurrentCulture) ?? string.Empty;
+    public string ModeText => Entry.ModeText;
+    public string OwnerText => Entry.Owner is null ? string.Empty : Entry.Group is null ? Entry.Owner : $"{Entry.Owner}:{Entry.Group}";
 
     public static string Format(long bytes) => bytes switch
     {
@@ -45,7 +47,10 @@ public partial class FilePane : UserControl
         NameColumn.Header = Loc.Get("FilesName");
         SizeColumn.Header = Loc.Get("FilesSize");
         DateColumn.Header = Loc.Get("FilesModified");
-        SizeChanged += (_, _) => NameColumn.Width = Math.Max(120, ActualWidth - SizeColumn.Width - DateColumn.Width - 40);
+        ModeColumn.Header = Loc.Get("PermsPermissions");
+        OwnerColumn.Header = Loc.Get("PermsOwner");
+        PermissionsButton.ToolTip = Loc.Get("PermsTooltip");
+        SizeChanged += (_, _) => FitNameColumn();
     }
 
     public IFileSide? Side => _side;
@@ -72,6 +77,53 @@ public partial class FilePane : UserControl
         _ = NavigateAsync(side.InitialDirectory);
     }
 
+    private void FitNameColumn() =>
+        NameColumn.Width = Math.Max(120, ActualWidth - SizeColumn.Width - DateColumn.Width - ModeColumn.Width - OwnerColumn.Width - 40);
+
+    /// <summary>En un servidor Unix se enseñan permisos y propietario, y el boton para cambiarlos.</summary>
+    private void ShowUnixColumns(bool unix)
+    {
+        var show = unix && ModeColumn.Width == 0;
+        var hide = !unix && ModeColumn.Width > 0;
+        if (show) { ModeColumn.Width = 90; OwnerColumn.Width = 110; }
+        if (hide) { ModeColumn.Width = 0; OwnerColumn.Width = 0; }
+        PermissionsButton.Visibility = unix ? Visibility.Visible : Visibility.Collapsed;
+        if (show || hide)
+            FitNameColumn();
+    }
+
+    private async void OnPermissionsClick(object sender, RoutedEventArgs e)
+    {
+        if (_side is not RemoteSide remote || SelectedEntries.Count == 0)
+            return;
+        var entries = SelectedEntries;
+        var dialog = new PermissionsWindow(Window.GetWindow(this)!, entries);
+        if (dialog.ShowDialog() != true || (!dialog.ChangeMode && !dialog.ChangeOwner))
+            return;
+        try
+        {
+            foreach (var entry in entries)
+                await ApplyPermissionsAsync(remote, entry, dialog, CancellationToken.None);
+            PaneStatus.Text = Loc.Get("PermsApplied");
+        }
+        catch (Exception ex)
+        {
+            PaneStatus.Text = ex.Message.ReplaceLineEndings(" ");
+        }
+        await RefreshAsync();
+    }
+
+    private static async Task ApplyPermissionsAsync(RemoteSide remote, FileEntry entry, PermissionsWindow dialog, CancellationToken cancellationToken)
+    {
+        if (dialog.ChangeMode && dialog.Mode is { } mode)
+            await remote.Fs.ChangeModeAsync(entry.FullPath, mode, cancellationToken);
+        if (dialog.ChangeOwner)
+            await remote.Fs.ChangeOwnerAsync(entry.FullPath, dialog.OwnerName, dialog.GroupName, cancellationToken);
+        if (dialog.Recursive && entry.IsDirectory)
+            foreach (var child in await remote.ListAsync(entry.FullPath, cancellationToken))
+                await ApplyPermissionsAsync(remote, child, dialog, cancellationToken);
+    }
+
     public async Task NavigateAsync(string path)
     {
         if (_side is null)
@@ -91,6 +143,7 @@ public partial class FilePane : UserControl
                 .Select(e => new FileRow(e))
                 .ToList();
             PaneStatus.Text = Loc.Format("FilesCount", entries.Count(e => e.IsDirectory), entries.Count(e => !e.IsDirectory));
+            ShowUnixColumns(_side is RemoteSide { Fs.SupportsPermissions: true } && entries.Any(e => e.Mode is not null));
             if (List.Items.Count > 0)
                 List.ScrollIntoView(List.Items[0]);
         }

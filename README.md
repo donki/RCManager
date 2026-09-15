@@ -33,7 +33,9 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   enteras (botón, F5, doble clic o arrastrando al otro panel) con cola, progreso y cancelar; crear
   carpeta (F7), renombrar (F2), borrar (Supr), subir un nivel (Retroceso). SFTP con contraseña o
   clave privada, opción de transferir por SCP; FTPS explícito o implícito. [FluentFTP](https://github.com/robinrodricks/FluentFTP)
-  (MIT) para FTP.
+  (MIT) para FTP. En servidores Linux/Unix: columnas de permisos y propietario y un botón para
+  cambiarlos (chmod por SFTP o `SITE CHMOD`; chown por id o, por nombre, con `chown` por SSH;
+  en FTP `SITE CHOWN` si el servidor lo admite).
 - `sOCRCManager.exe --open "Nombre"` abre esa conexión al arrancar.
 - Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
   (cifrada con DPAPI para el usuario de Windows).

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Renci.SshNet;
 using Renci.SshNet.Sftp;
 using SocRcManager.Models;
@@ -14,13 +14,49 @@ public sealed class SftpFileSystem : IRemoteFileSystem
 {
     private readonly SftpClient _sftp;
     private readonly ScpClient? _scp;
+    private readonly Connection _connection;
+    private readonly string _password;
 
-    private SftpFileSystem(SftpClient sftp, ScpClient? scp)
+    private SftpFileSystem(Connection connection, string password, SftpClient sftp, ScpClient? scp)
     {
+        _connection = connection;
+        _password = password;
         _sftp = sftp;
         _scp = scp;
         InitialDirectory = sftp.WorkingDirectory;
     }
+
+    public bool SupportsPermissions => true;
+
+    public Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken) =>
+        Task.Run(() => _sftp.ChangePermissions(path, (short)mode), cancellationToken);
+
+    /// <summary>
+    /// SFTP solo cambia el propietario por numero (uid/gid). Con nombres se lanza un
+    /// <c>chown</c> por SSH con las mismas credenciales; si el servidor no deja ejecutar comandos
+    /// y se dieron numeros, se hace por SFTP.
+    /// </summary>
+    public Task ChangeOwnerAsync(string path, string owner, string group, CancellationToken cancellationToken) => Task.Run(() =>
+    {
+        if (int.TryParse(owner, out var uid) && (group.Length == 0 || int.TryParse(group, out _)))
+        {
+            var attrs = _sftp.GetAttributes(path);
+            attrs.UserId = uid;
+            if (group.Length > 0)
+                attrs.GroupId = int.Parse(group);
+            _sftp.SetAttributes(path, attrs);
+            return;
+        }
+
+        using var ssh = new SshClient(SshAuth.Build(_connection, _password));
+        ssh.Connect();
+        var spec = group.Length > 0 ? $"{owner}:{group}" : owner;
+        using var cmd = ssh.RunCommand($"chown {Quote(spec)} {Quote(path)}");
+        if (cmd.ExitStatus != 0)
+            throw new IOException(cmd.Error.Trim().Length > 0 ? cmd.Error.Trim() : $"chown: {cmd.ExitStatus}");
+    }, cancellationToken);
+
+    private static string Quote(string s) => "'" + s.Replace("'", "'\\''") + "'";
 
     public string InitialDirectory { get; }
 
@@ -36,7 +72,7 @@ public sealed class SftpFileSystem : IRemoteFileSystem
             scp = new ScpClient(SshAuth.Build(connection, password));
             await Task.Run(scp.Connect, cancellationToken);
         }
-        return new SftpFileSystem(sftp, scp);
+        return new SftpFileSystem(connection, password, sftp, scp);
     }
 
     public Task<IReadOnlyList<FileEntry>> ListAsync(string path, CancellationToken cancellationToken) => Task.Run(() =>
@@ -52,7 +88,10 @@ public sealed class SftpFileSystem : IRemoteFileSystem
             {
                 try { isDir = _sftp.GetAttributes(f.FullName).IsDirectory; } catch (Exception) { }
             }
-            entries.Add(new FileEntry(f.Name, f.FullName, isDir, f.Length, f.LastWriteTime));
+            var mode = (f.OwnerCanRead ? 0x100 : 0) | (f.OwnerCanWrite ? 0x80 : 0) | (f.OwnerCanExecute ? 0x40 : 0)
+                     | (f.GroupCanRead ? 0x20 : 0) | (f.GroupCanWrite ? 0x10 : 0) | (f.GroupCanExecute ? 0x08 : 0)
+                     | (f.OthersCanRead ? 0x04 : 0) | (f.OthersCanWrite ? 0x02 : 0) | (f.OthersCanExecute ? 0x01 : 0);
+            entries.Add(new FileEntry(f.Name, f.FullName, isDir, f.Length, f.LastWriteTime, mode, f.UserId.ToString(), f.GroupId.ToString()));
         }
         return (IReadOnlyList<FileEntry>)entries;
     }, cancellationToken);
