@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.16.1 — Corregido: «Avisar» del certificado no dejaba conectar
+
+- El nivel de autenticación del servidor iba al revés en el control de Windows (1 = no conectar,
+  2 = avisar): con la opción por defecto «Avisar» salía «no puede continuar porque se requiere
+  autenticación» en servidores con certificado propio. Ahora avisa y deja seguir, como mstsc.
+
 ## 2026.9.16.0 — Doble clic conecta
 
 - **Doble clic** sobre una conexión la abre; **Ctrl + doble clic** la edita (o renombra la carpeta).

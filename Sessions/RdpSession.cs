@@ -169,7 +169,9 @@ public sealed class RdpSession : ISession
         advanced.MaxReconnectAttempts = 20;
 
         // --- Avanzado ---
-        advanced.AuthenticationLevel = (uint)Math.Clamp(c.RdpAuthLevel, 0, 2);
+        // Ojo al orden de mstscax: 0 = sin comprobar, 1 = si falla NO conectar, 2 = si falla avisar
+        // (el editor guarda 0 conectar / 1 avisar / 2 no conectar, como el dialogo de mstsc).
+        advanced.AuthenticationLevel = c.RdpAuthLevel switch { 1 => 2u, 2 => 1u, _ => 0u };
         advanced.ConnectToAdministerServer = c.RdpAdminSession;
         advanced.ConnectToServerConsole = false;
 
