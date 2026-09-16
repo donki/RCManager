@@ -1,5 +1,10 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.16.3 — Ver la contraseña
+
+- Todas las casillas de contraseña (conexión, puerta de enlace, la que se pide al conectar y la
+  frase de cifrado) llevan el botón del ojo para verla (constitución general 6).
+
 ## 2026.9.16.2 — El botón de conectar, arriba
 
 - El botón de conectar pasa a la barra de arriba del árbol, el primero (antes estaba abajo, junto a

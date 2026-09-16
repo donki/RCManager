@@ -95,6 +95,8 @@ public static class Loc
         ["RenameFolderTooltip"] = "Rename folder",
         ["PasswordPrompt"] = "Password for {0}@{1}",
         ["PasswordTitle"] = "Password",
+        ["ShowPassword"] = "Show the password",
+        ["HidePassword"] = "Hide the password",
         ["SavePassword"] = "Remember it on this PC (encrypted)",
         ["Unnamed"] = "(unnamed)",
 
@@ -309,6 +311,8 @@ public static class Loc
         ["RenameFolderTooltip"] = "Renombrar la carpeta",
         ["PasswordPrompt"] = "Contraseña de {0}@{1}",
         ["PasswordTitle"] = "Contraseña",
+        ["ShowPassword"] = "Ver la contraseña",
+        ["HidePassword"] = "Ocultar la contraseña",
         ["SavePassword"] = "Recordarla en este PC (cifrada)",
         ["Unnamed"] = "(sin nombre)",
 

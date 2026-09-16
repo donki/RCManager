@@ -14,7 +14,7 @@ namespace SocRcManager;
 public sealed class PromptWindow : Window
 {
     private readonly TextBox? _text;
-    private readonly PasswordBox? _password;
+    private readonly Controls.RevealPasswordBox? _password;
     private readonly CheckBox? _check;
 
     private PromptWindow(Window owner, string title, string message, string? initial, bool password, bool confirm, string? checkText = null)
@@ -44,7 +44,7 @@ public sealed class PromptWindow : Window
         {
             if (password)
             {
-                _password = new PasswordBox { Style = (Style)FindResource("PasswordField"), Margin = new Thickness(0, 10, 0, 0) };
+                _password = new Controls.RevealPasswordBox { Margin = new Thickness(0, 10, 0, 0) };
                 stack.Children.Add(_password);
                 if (checkText is not null)
                 {
