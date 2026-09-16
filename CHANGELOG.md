@@ -1,5 +1,10 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.16.2 — El botón de conectar, arriba
+
+- El botón de conectar pasa a la barra de arriba del árbol, el primero (antes estaba abajo, junto a
+  los ajustes, y se perdía).
+
 ## 2026.9.16.1 — Corregido: «Avisar» del certificado no dejaba conectar
 
 - El nivel de autenticación del servidor iba al revés en el control de Windows (1 = no conectar,

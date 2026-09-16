@@ -24,7 +24,10 @@
             <DockPanel>
                 <!-- Solo iconos (constitucion 6); el nombre de cada uno va en el tooltip. -->
                 <WrapPanel DockPanel.Dock="Top" Margin="8,8,8,4">
-                    <Button x:Name="NewConnectionButton" Style="{StaticResource IconButton}" Content="&#xE710;"
+                    <!-- Conectar, el primero: es lo que mas se pulsa. -->
+                    <Button x:Name="ConnectButton" Style="{StaticResource IconButton}" Content="&#xE8AF;"
+                            ToolTip="{loc:T ConnectTooltip}" Click="OnConnectClick" Margin="0,0,6,0" />
+                    <Button x:Name="NewConnectionButton" Style="{StaticResource GhostIconButton}" Content="&#xE710;"
                             ToolTip="{loc:T NewConnectionTooltip}" Click="OnNewConnectionClick" />
                     <Button x:Name="NewFolderButton" Style="{StaticResource GhostIconButton}" Content="&#xE8F4;"
                             ToolTip="{loc:T NewFolderTooltip}" Click="OnNewFolderClick" />
@@ -46,8 +49,6 @@
                 </Grid>
 
                 <Grid DockPanel.Dock="Bottom" Margin="8,4,8,8">
-                    <Button x:Name="ConnectButton" Style="{StaticResource IconButton}" Content="&#xE8AF;"
-                            ToolTip="{loc:T ConnectTooltip}" Click="OnConnectClick" HorizontalAlignment="Left" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button x:Name="SettingsButton" Style="{StaticResource GhostIconButton}" Content="&#xE713;"
                                 ToolTip="{loc:T SettingsTooltip}" Click="OnSettingsClick" />
