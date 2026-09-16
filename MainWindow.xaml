@@ -80,7 +80,9 @@
                       HorizontalAlignment="Center" VerticalAlignment="Stretch" />
 
         <!-- ============================ Pestañas ============================ -->
-        <Grid Grid.Row="0" Grid.Column="2">
+        <!-- Soltar aqui una conexion del arbol la abre. -->
+        <Grid Grid.Row="0" Grid.Column="2" x:Name="TabsArea" AllowDrop="True" Background="Transparent"
+              DragOver="OnTabsDragOver" Drop="OnTabsDrop">
             <TabControl x:Name="Tabs" Background="{DynamicResource MirrorBackground}" BorderThickness="0"
                         Padding="0" SelectionChanged="OnTabChanged">
                 <TabControl.Resources>

@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.16.0 — Doble clic conecta
+
+- **Doble clic** sobre una conexión la abre; **Ctrl + doble clic** la edita (o renombra la carpeta).
+  **Arrastrar** una conexión del árbol al área de pestañas también la abre.
+- Paquete **MSIX** para la Microsoft Store (`tools\empaquetar-msix.ps1`), que se entrega junto al exe.
+
 ## 2026.9.15.8 — Permisos y propietario en servidores Linux
 
 - En el panel remoto de SFTP y FTP, cuando el servidor es Unix (el listado trae `rwx`), salen las

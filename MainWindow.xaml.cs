@@ -283,7 +283,7 @@ public partial class MainWindow : Window
 
         var item = _dragItem;
         _dragItem = null;
-        DragDrop.DoDragDrop(item, new DataObject(typeof(Node), node), DragDropEffects.Move);
+        DragDrop.DoDragDrop(item, new DataObject(typeof(Node), node), DragDropEffects.Move | DragDropEffects.Copy);
         PaintDropTarget(null);
     }
 
@@ -409,14 +409,37 @@ public partial class MainWindow : Window
         BuildTree();
     }
 
-    // Doble clic sobre una fila: editarla (conexion) o renombrarla (carpeta). Conectar es el boton
-    // o Intro, para que un doble clic despistado no abra sesiones.
-    private void OnTreeDoubleClick(object sender, MouseButtonEventArgs e)
+    // Doble clic sobre una conexion: conectar. Ctrl + doble clic: editar la conexion o renombrar la
+    // carpeta (sobre una carpeta, el doble clic a secas la despliega, que es lo suyo).
+    private async void OnTreeDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (ItemAt(e.OriginalSource as DependencyObject) is null || Selected is null)
+        if (ItemAt(e.OriginalSource as DependencyObject) is null || Selected is not { } node)
+            return;
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        {
+            e.Handled = true;
+            OnEditClick(sender, e);
+        }
+        else if (node.Connection is { } c)
+        {
+            e.Handled = true;
+            await OpenAsync(c);
+        }
+    }
+
+    // Arrastrar una conexion del arbol al area de pestañas: conectar.
+    private void OnTabsDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetData(typeof(Node)) is Node { Connection: not null } ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void OnTabsDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(typeof(Node)) is not Node { Connection: { } c })
             return;
         e.Handled = true;
-        OnEditClick(sender, e);
+        await OpenAsync(c);
     }
 
     private async void OnTreeKeyDown(object sender, KeyEventArgs e)

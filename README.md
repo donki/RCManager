@@ -11,8 +11,8 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
 ## Qué hace
 
 - **Árbol de conexiones** con carpetas anidadas, buscador (por nombre, servidor, usuario, carpeta o
-  notas), alta, edición, duplicado y borrado. Doble clic edita; el botón ⇒ o Intro conectan; Supr
-  borra. Se arrastran conexiones y carpetas a otra carpeta. El árbol se conserva al cerrar (carpetas
+  notas), alta, edición, duplicado y borrado. Doble clic (o arrastrar al área de pestañas) conecta; Ctrl + doble clic
+  edita; el botón ⇒ o Intro conectan; Supr borra. Se arrastran conexiones y carpetas a otra carpeta. El árbol se conserva al cerrar (carpetas
   abiertas, selección, ancho del panel).
 - **RDP** dentro de la pestaña, con el control de Escritorio remoto que trae Windows (el mismo que
   `mstsc.exe`) y **todas sus opciones**, en las mismas pestañas que mstsc: *Pantalla* (ajustar a la
@@ -91,4 +91,4 @@ dentro (se pide confirmación y queda el `.bak`).
   y en la red de desarrollo no había otro).
 - Importar desde `.rdp` y desde otros gestores (RDM ya está; las conexiones FTP/SFTP de RDM no se
   importan todavía).
-- Paquete MSIX y ficha de Microsoft Store.
+- Ficha de Microsoft Store (el MSIX ya se genera con `tools\empaquetar-msix.ps1`; falta reservar el nombre en Partner Center).
