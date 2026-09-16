@@ -96,6 +96,16 @@ public partial class ConnectionWindow : Window
         Loaded += (_, _) => { NameBox.Focus(); NameBox.SelectAll(); };
     }
 
+    /// <summary>Pestaña con la que se abre (0 = General).</summary>
+    public int InitialTab
+    {
+        set
+        {
+            if (value > 0 && value < Sections.Items.Count)
+                Sections.SelectedIndex = value;
+        }
+    }
+
     private ConnectionKind Kind => KindBox.SelectedIndex switch { 1 => ConnectionKind.Ssh, 2 => ConnectionKind.Sftp, 3 => ConnectionKind.Ftp, _ => ConnectionKind.Rdp };
 
     private static readonly string[] DefaultPorts = ["3389", "22", "21", "990"];

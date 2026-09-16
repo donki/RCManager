@@ -641,6 +641,23 @@ public partial class MainWindow : Window
         await OpenAsync(connection);
     }
 
+    /// <summary>Abre el editor de esa conexion en la pestaña dada (parametros --edit / --edit-tab).</summary>
+    public void EditByName(string name, int tab)
+    {
+        var connection = _store.Connections.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.CurrentCultureIgnoreCase));
+        if (connection is null)
+            return;
+        SelectConnection(connection);
+        var copy = connection.Clone();
+        var dialog = new ConnectionWindow(copy, _store.AllFolders()) { Owner = this, InitialTab = tab };
+        if (dialog.ShowDialog() == true)
+        {
+            _store.Connections[_store.Connections.IndexOf(connection)] = copy;
+            _store.Save();
+            BuildTree();
+        }
+    }
+
     private async void OnConnectClick(object sender, RoutedEventArgs e)
     {
         if (Selected?.Connection is { } c)

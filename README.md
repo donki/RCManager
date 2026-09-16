@@ -36,7 +36,8 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   (MIT) para FTP. En servidores Linux/Unix: columnas de permisos y propietario y un botón para
   cambiarlos (chmod por SFTP o `SITE CHMOD`; chown por id o, por nombre, con `chown` por SSH;
   en FTP `SITE CHOWN` si el servidor lo admite).
-- `sOCRCManager.exe --open "Nombre"` abre esa conexión al arrancar.
+- `sOCRCManager.exe --open "Nombre"` abre esa conexión al arrancar; `--edit "Nombre"` (y `--edit-tab N`)
+  abre su editor; `--size AnchoxAlto` fija el tamaño de la ventana (para capturas).
 - Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
   (cifrada con DPAPI para el usuario de Windows).
 - **Importar desde Remote Desktop Manager**: botón ⇥ de la barra del árbol; lee un `.rdm` exportado
@@ -91,4 +92,4 @@ dentro (se pide confirmación y queda el `.bak`).
   y en la red de desarrollo no había otro).
 - Importar desde `.rdp` y desde otros gestores (RDM ya está; las conexiones FTP/SFTP de RDM no se
   importan todavía).
-- Ficha de Microsoft Store (el MSIX ya se genera con `tools\empaquetar-msix.ps1`; falta reservar el nombre en Partner Center).
+- Publicar en la Microsoft Store: el MSIX (`tools\empaquetar-msix.ps1`) y la ficha (`store\microsoft\`) están; falta reservar el nombre en Partner Center y enviarlo.

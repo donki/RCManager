@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.16.4 — Ficha para la Microsoft Store
+
+- `store\microsoft\`: descripción (es/en), características, palabras clave, logotipos y capturas con
+  datos de demostración; `tools\capturas-store.ps1` las rehace. Parámetros `--edit`, `--edit-tab`
+  y `--size` para abrir el editor y fijar el tamaño desde la línea de comandos.
+
 ## 2026.9.16.3 — Ver la contraseña
 
 - Todas las casillas de contraseña (conexión, puerta de enlace, la que se pide al conectar y la
