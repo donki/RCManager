@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using SocRcManager.Localization;
@@ -25,6 +25,7 @@ public partial class SettingsWindow : Window
         SavePassphraseButton.ToolTip = Loc.Get("PassphraseSaveTooltip");
         SyncButton.ToolTip = Loc.Get("SyncNowTooltip");
         CloseButton.ToolTip = Loc.Get("Close");
+        ImportButton.ToolTip = Loc.Get("ImportTooltip");
         GoogleButton.IsEnabled = CloudSync.IsAvailable(StorageMode.GoogleDrive);
         OneDriveButton.IsEnabled = CloudSync.IsAvailable(StorageMode.OneDrive);
         Paint();
@@ -145,6 +146,15 @@ public partial class SettingsWindow : Window
         OneDriveButton.IsEnabled = !busy && CloudSync.IsAvailable(StorageMode.OneDrive);
         SavePassphraseButton.IsEnabled = !busy;
         SyncButton.IsEnabled = !busy;
+    }
+
+    private void OnImportClick(object sender, RoutedEventArgs e)
+    {
+        if (Owner is MainWindow main)
+        {
+            main.ImportRdm();
+            LocalReplaced = true;
+        }
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();

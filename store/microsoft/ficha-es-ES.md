@@ -67,7 +67,6 @@ Ficheros entre el PC y el servidor con el Explorador
 Terminal SSH con colores, historial y clave privada
 Explorador de dos paneles para SFTP y FTP, con permisos en Linux
 Conexiones en este PC o cifradas en Google Drive / OneDrive
-Importación desde Remote Desktop Manager (.rdm)
 Software libre, en español y en inglés, claro y oscuro
 ```
 

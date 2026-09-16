@@ -78,7 +78,6 @@ public partial class MainWindow : Window
         EditButton.ToolTip = Loc.Get("EditTooltip");
         DuplicateButton.ToolTip = Loc.Get("DuplicateTooltip");
         DeleteButton.ToolTip = Loc.Get("DeleteTooltip");
-        ImportButton.ToolTip = Loc.Get("ImportTooltip");
         ConnectButton.ToolTip = Loc.Get("ConnectTooltip");
         SettingsButton.ToolTip = Loc.Get("SettingsTooltip");
         OpenFileButton.ToolTip = Loc.Get("OpenFileTooltip");
@@ -560,6 +559,9 @@ public partial class MainWindow : Window
     /// Importa un .rdm de Remote Desktop Manager. Las conexiones que ya existan (mismo nombre,
     /// servidor y carpeta) no se repiten; las carpetas se crean aunque esten vacias.
     /// </summary>
+    /// <summary>Importar un .rdm (lo pide Ajustes: el boton salio de la barra del arbol el 2026-09-16).</summary>
+    public void ImportRdm() => OnImportClick(this, new RoutedEventArgs());
+
     private void OnImportClick(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Remote Desktop Manager (*.rdm)|*.rdm|*.*|*.*", CheckFileExists = true };

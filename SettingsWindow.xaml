@@ -67,6 +67,18 @@
             </StackPanel>
         </Border>
 
+        <!-- Importar desde Remote Desktop Manager (.rdm), con su arbol de carpetas. -->
+        <Border Style="{StaticResource Card}" Padding="18,12,18,14" Margin="0,10,0,0">
+            <DockPanel>
+                <Button x:Name="ImportButton" DockPanel.Dock="Right" Style="{StaticResource GhostIconButton}" Content="&#xE8B5;"
+                        ToolTip="{loc:T ImportTooltip}" Click="OnImportClick" VerticalAlignment="Center" Margin="12,0,0,0" />
+                <StackPanel>
+                    <TextBlock Text="{loc:T ImportTitle}" Style="{StaticResource CardTitle}" />
+                    <TextBlock Text="{loc:T ImportIntro}" Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <ProgressBar x:Name="Busy" Height="3" IsIndeterminate="True" Visibility="Collapsed"
                      Foreground="{DynamicResource Primary}" Background="Transparent" BorderThickness="0" />
 

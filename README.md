@@ -40,7 +40,7 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   abre su editor; `--size AnchoxAlto` fija el tamaño de la ventana (para capturas).
 - Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
   (cifrada con DPAPI para el usuario de Windows).
-- **Importar desde Remote Desktop Manager**: botón ⇥ de la barra del árbol; lee un `.rdm` exportado
+- **Importar desde Remote Desktop Manager**: en Ajustes ⚙; lee un `.rdm` exportado
   y conserva sus carpetas. Las contraseñas de RDM no se importan (van cifradas con su clave).
 - **Dónde se guardan** (Ajustes ⚙): en este PC, o en Google Drive / OneDrive entrando con tu cuenta.
   En la nube el fichero va a la carpeta privada de la aplicación (ámbitos `drive.appdata` /

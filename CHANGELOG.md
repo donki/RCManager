@@ -1,5 +1,10 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.16.5 — Importar .rdm pasa a Ajustes
+
+- El botón de importar desde Remote Desktop Manager sale de la barra del árbol (se usa una vez) y
+  queda en Ajustes ⚙, con su explicación.
+
 ## 2026.9.16.4 — Ficha para la Microsoft Store
 
 - `store\microsoft\`: descripción (es/en), características, palabras clave, logotipos y capturas con

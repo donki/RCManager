@@ -37,9 +37,6 @@
                             ToolTip="{loc:T DuplicateTooltip}" Click="OnDuplicateClick" />
                     <Button x:Name="DeleteButton" Style="{StaticResource DangerIconButton}" Content="&#xE74D;"
                             ToolTip="{loc:T DeleteTooltip}" Click="OnDeleteClick" />
-                    <!-- Importar desde Remote Desktop Manager (.rdm), con su arbol de carpetas. -->
-                    <Button x:Name="ImportButton" Style="{StaticResource GhostIconButton}" Content="&#xE8B5;"
-                            ToolTip="{loc:T ImportTooltip}" Click="OnImportClick" />
                 </WrapPanel>
 
                 <Grid DockPanel.Dock="Top" Margin="10,2,10,6">
