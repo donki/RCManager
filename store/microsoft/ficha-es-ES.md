@@ -83,9 +83,10 @@ Productividad (o Herramientas de desarrollo).
 
 ## Capturas de pantalla
 
-En `capturas/` (1600x900, con datos de demostración; se rehacen con
-`scratchpad\rc_shots.ps1` y los parámetros `--size`, `--open`, `--edit`, `--edit-tab` de la
-aplicación):
+En `capturas/` (1600x900, con datos de demostración). Se rehacen con `tools\capturas-store.ps1`
+(genera antes logos y datos con `tools\logos-y-demo-store.py`; usa los parámetros `--size`,
+`--open`, `--edit` y `--edit-tab` de la aplicación y el SFTP de prueba `tools\servidores-prueba.py`).
+El script guarda y restaura las conexiones reales y apaga la nube mientras captura.
 
 | Fichero | Qué se ve |
 |---|---|

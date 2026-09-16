@@ -1,4 +1,5 @@
-# Capturas de la ficha de RCManager con datos de demostracion, sin tocar el escritorio del usuario:
+# Capturas de la ficha de la Store con datos de demostracion (antes: python tools\logos-y-demo-store.py),
+# sin tocar el escritorio del usuario:
 # la app arranca minimizada, se muestra sin activarla (SW_SHOWNOACTIVATE) y se captura con
 # PrintWindow. Las ventanas secundarias (editor, ajustes) se abren por la propia app con --shot.
 $ErrorActionPreference = 'Stop'
@@ -49,7 +50,7 @@ $s = Get-Content $settings -Raw | ConvertFrom-Json; $s.ExpandedFolders = @('Ofic
 $s | ConvertTo-Json -Depth 5 | Set-Content $settings -Encoding UTF8
 
 # --- servidor SFTP de prueba
-$srv = Start-Process -WindowStyle Hidden python -ArgumentList "C:\Users\Josep\AppData\Local\Temp\claude\d--sOCProjects\1c42d341-4ccb-4742-b053-96b0d2a43191\scratchpad\file_servers.py" -PassThru -RedirectStandardOutput "$env:TEMP\fs.log" -RedirectStandardError "$env:TEMP\fs.err"
+$srv = Start-Process -WindowStyle Hidden python -ArgumentList "$PSScriptRoot\servidores-prueba.py" -PassThru -RedirectStandardOutput "$env:TEMP\fs.log" -RedirectStandardError "$env:TEMP\fs.err"
 Start-Sleep 4
 
 try {
