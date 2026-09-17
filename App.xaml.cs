@@ -15,6 +15,7 @@ public partial class App : Application
         // (--edit-tab N en esa pestaña). Sirven para capturas de pantalla y para accesos directos.
         var open = new List<string>();
         string? edit = null;
+        string? editFileConnection = null, editFilePath = null;
         var editTab = 0;
         (int W, int H)? size = null;
         for (var i = 0; i < e.Args.Length - 1; i++)
@@ -22,6 +23,7 @@ public partial class App : Application
             var key = e.Args[i].ToLowerInvariant();
             if (key == "--open") open.Add(e.Args[++i]);
             else if (key == "--edit") edit = e.Args[++i];
+            else if (key == "--edit-file" && i + 2 < e.Args.Length) { editFileConnection = e.Args[++i]; editFilePath = e.Args[++i]; }
             else if (key == "--edit-tab") int.TryParse(e.Args[++i], out editTab);
             else if (key == "--size" && e.Args[++i].Split('x') is [var w, var h] && int.TryParse(w, out var pw) && int.TryParse(h, out var ph))
                 size = (pw, ph);
@@ -37,6 +39,9 @@ public partial class App : Application
         window.Show();
         foreach (var name in open)
             window.OpenByName(name);
+        // --edit-file "Conexion" "/ruta/fichero": abre esa conexion de ficheros y el fichero en el editor.
+        if (editFileConnection is not null && editFilePath is not null)
+            window.OpenFileInEditor(editFileConnection, editFilePath);
         if (edit is not null)
             window.Dispatcher.BeginInvoke(() => window.EditByName(edit, editTab), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
     }

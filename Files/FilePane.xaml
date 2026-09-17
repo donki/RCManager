@@ -13,6 +13,10 @@
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="UpButton" Style="{StaticResource GhostIconButton}" Content="&#xE74A;" Click="OnUpClick" />
                         <Button x:Name="RefreshButton" Style="{StaticResource GhostIconButton}" Content="&#xE72C;" Click="OnRefreshClick" />
+                        <Button x:Name="OpenButton" Style="{StaticResource GhostIconButton}" Content="&#xE8A7;" Click="OnOpenClick" />
+                        <Button x:Name="EditButton" Style="{StaticResource GhostIconButton}" Content="&#xE70F;" Click="OnEditClick" Visibility="Collapsed" />
+                        <Button x:Name="CopyPathButton" Style="{StaticResource GhostIconButton}" Content="&#xE8C8;" Click="OnCopyPathClick" />
+                        <ToggleButton x:Name="HiddenButton" Style="{StaticResource ToggleIconButton}" Content="&#xED1A;" Width="34" Height="34" FontSize="14" Click="OnHiddenClick" />
                         <Button x:Name="NewFolderButton" Style="{StaticResource GhostIconButton}" Content="&#xE8F4;" Click="OnNewFolderClick" />
                         <Button x:Name="RenameButton" Style="{StaticResource GhostIconButton}" Content="&#xE8AC;" Click="OnRenameClick" />
                         <Button x:Name="PermissionsButton" Style="{StaticResource GhostIconButton}" Content="&#xE8D7;" Click="OnPermissionsClick" Visibility="Collapsed" />

@@ -37,6 +37,12 @@ public interface IRemoteFileSystem : IDisposable
 
     Task RenameAsync(string path, string newPath, CancellationToken cancellationToken);
 
+    /// <summary>Lo que hay en esa ruta, o null si no existe.</summary>
+    Task<FileEntry?> StatAsync(string path, CancellationToken cancellationToken);
+
+    /// <summary>Fecha de modificacion de un fichero remoto (para conservar la del original al subir).</summary>
+    Task SetModifiedAsync(string path, DateTime modified, CancellationToken cancellationToken);
+
     /// <summary>El servidor es Unix y admite chmod/chown (en un FTP de Windows, no).</summary>
     bool SupportsPermissions { get; }
 

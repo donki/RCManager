@@ -131,9 +131,82 @@
                                 <TextBlock Text="{loc:T FilesPathsHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
                             </StackPanel>
 
+                            <TextBlock Text="{loc:T FullScreenScreen}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="ScreenBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34" />
+
                             <TextBlock Text="{loc:T Notes}" Style="{StaticResource FieldLabel}" />
                             <TextBox x:Name="NotesBox" Style="{StaticResource Field}" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
                                      VerticalContentAlignment="Top" Padding="8,6" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================ Transferencias (SFTP/SCP y FTP/FTPS) ============================ -->
+            <TabItem x:Name="TransfersTab" Header="{loc:T TabTransfers}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Padding="18,12,18,16" Margin="0,8,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{loc:T TransferParallel}" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox x:Name="ParallelBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                        <ComboBoxItem Content="1" /><ComboBoxItem Content="2" /><ComboBoxItem Content="3" /><ComboBoxItem Content="4" />
+                                        <ComboBoxItem Content="5" /><ComboBoxItem Content="6" /><ComboBoxItem Content="7" /><ComboBoxItem Content="8" />
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{loc:T TransferRetries}" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox x:Name="RetriesBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                        <ComboBoxItem Content="0" /><ComboBoxItem Content="1" /><ComboBoxItem Content="2" /><ComboBoxItem Content="3" /><ComboBoxItem Content="4" /><ComboBoxItem Content="5" />
+                                    </ComboBox>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="{loc:T TransferParallelHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+
+                            <TextBlock Text="{loc:T TransferOnConflict}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="ConflictBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                <ComboBoxItem Content="{loc:T ConflictAskOption}" />
+                                <ComboBoxItem Content="{loc:T ConflictOverwriteOption}" />
+                                <ComboBoxItem Content="{loc:T ConflictSkipOption}" />
+                            </ComboBox>
+
+                            <CheckBox x:Name="PreserveTimesBox" Style="{StaticResource Check}" Content="{loc:T TransferPreserveTimes}" Margin="0,14,0,0" />
+                            <CheckBox x:Name="ShowHiddenBox" Style="{StaticResource Check}" Content="{loc:T FilesShowHiddenOption}" />
+
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{loc:T FilesKeepAlive}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="KeepAliveBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{loc:T FilesTimeout}" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="TimeoutBox" Style="{StaticResource Field}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel x:Name="FtpOptionsPanel">
+                                <TextBlock Text="{loc:T FtpMode}" Style="{StaticResource FieldLabel}" Margin="0,16,0,4" />
+                                <ComboBox x:Name="FtpModeBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                    <ComboBoxItem Content="{loc:T FtpPassiveOption}" />
+                                    <ComboBoxItem Content="{loc:T FtpActiveOption}" />
+                                </ComboBox>
+                                <TextBlock Text="{loc:T FtpEncoding}" Style="{StaticResource FieldLabel}" />
+                                <ComboBox x:Name="FtpEncodingBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
+                                    <ComboBoxItem Content="UTF-8" />
+                                    <ComboBoxItem Content="Latin-1 (ISO-8859-1)" />
+                                </ComboBox>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </ScrollViewer>

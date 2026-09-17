@@ -28,7 +28,14 @@ public interface ISession
     /// </summary>
     bool HasNativeFullScreen { get; }
 
-    void EnterFullScreen();
+    /// <summary>Pantalla completa nativa; <paramref name="screen"/> es 0 (la de la ventana) o 1..n.</summary>
+    void EnterFullScreen(int screen);
+
+    /// <summary>Puede agrandar o achicar lo que enseña (letra del terminal, escala del escritorio…).</summary>
+    bool CanZoom { get; }
+
+    /// <summary>Zoom en pasos (+1 / -1). Devuelve el valor para enseñarlo («14 pt», «125 %»).</summary>
+    string Zoom(int steps);
 
     /// <summary>Ha salido de su pantalla completa nativa (por la barra o por el servidor).</summary>
     event Action? LeftFullScreen;

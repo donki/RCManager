@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
@@ -96,6 +96,22 @@ public sealed class TerminalControl : FrameworkElement
 
     public int Rows => _rows;
     public int Cols => _cols;
+
+    /// <summary>Tamaño de letra; al cambiar se recalcula la rejilla y se avisa al shell del tamaño nuevo.</summary>
+    public double FontSize
+    {
+        get => _fontSize;
+        set
+        {
+            if (Math.Abs(_fontSize - value) < 0.1)
+                return;
+            _fontSize = value;
+            MeasureCell();
+            if (ActualWidth > 0 && ActualHeight > 0)
+                Resize(Math.Max(5, (int)(ActualHeight / _cellH)), Math.Max(20, (int)(ActualWidth / _cellW)));
+            InvalidateVisual();
+        }
+    }
 
     public string Title { get; private set; } = string.Empty;
     public event Action<string>? TitleChanged;

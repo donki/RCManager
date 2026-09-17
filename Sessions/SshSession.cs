@@ -30,6 +30,7 @@ public sealed class SshSession : ISession
     {
         _connection = connection;
         View = _terminal;
+        _terminal.FontSize = Math.Clamp(connection.FontSize, 9, 28);
         _terminal.Input += bytes =>
         {
             try { _shell?.Write(bytes); _shell?.Flush(); }
@@ -142,8 +143,17 @@ public sealed class SshSession : ISession
 
     public bool HasNativeFullScreen => false;
 
-    public void EnterFullScreen()
+    public void EnterFullScreen(int screen)
     {
+    }
+
+    public bool CanZoom => true;
+
+    public string Zoom(int steps)
+    {
+        _terminal.FontSize = Math.Clamp(_terminal.FontSize + steps, 9, 28);
+        _connection.FontSize = _terminal.FontSize;
+        return $"{_terminal.FontSize:0} pt";
     }
 
     public event Action? LeftFullScreen

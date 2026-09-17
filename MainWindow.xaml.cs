@@ -643,6 +643,18 @@ public partial class MainWindow : Window
         await OpenAsync(connection);
     }
 
+    /// <summary>Abre esa conexion de ficheros y un fichero suyo en el editor integrado (--edit-file).</summary>
+    public async void OpenFileInEditor(string name, string path)
+    {
+        var connection = _store.Connections.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.CurrentCultureIgnoreCase));
+        if (connection is null || !connection.IsFiles)
+            return;
+        SelectConnection(connection);
+        await OpenAsync(connection);
+        if (_open.FirstOrDefault(x => ReferenceEquals(x.Connection, connection)).Session is FileSession files)
+            await files.EditFileAsync(path);
+    }
+
     /// <summary>Abre el editor de esa conexion en la pestaña dada (parametros --edit / --edit-tab).</summary>
     public void EditByName(string name, int tab)
     {
@@ -708,13 +720,27 @@ public partial class MainWindow : Window
             ToolTip = Loc.Get("DisconnectTooltip"),
         };
         var title = new TextBlock { Text = connection.Name, VerticalAlignment = VerticalAlignment.Center };
-        var header = new StackPanel { Orientation = Orientation.Horizontal, Children = { title, fullButton, closeButton } };
+        var header = new StackPanel { Orientation = Orientation.Horizontal, Children = { title } };
+        // Zoom: letra del terminal y de los paneles de ficheros, escala del escritorio en RDP.
+        if (session.CanZoom)
+        {
+            var zoomOut = TabButton("\uE71F", Loc.Get("ZoomOutTooltip"), new Thickness(8, 0, -6, 0));
+            var zoomIn = TabButton("\uE8A3", Loc.Get("ZoomInTooltip"), new Thickness(0, 0, -6, 0));
+            zoomOut.Click += (_, _) => { SetStatus(Loc.Format("ZoomStatus", connection.Name, session.Zoom(-1))); _store.Save(); };
+            zoomIn.Click += (_, _) => { SetStatus(Loc.Format("ZoomStatus", connection.Name, session.Zoom(+1))); _store.Save(); };
+            header.Children.Add(zoomOut);
+            header.Children.Add(zoomIn);
+            fullButton.Margin = new Thickness(0, 0, -6, 0);
+        }
+        header.Children.Add(fullButton);
+        header.Children.Add(closeButton);
         var tab = new TabItem { Header = header, Content = session.View };
         fullButton.Click += (_, _) =>
         {
             Tabs.SelectedItem = tab;
+            MoveToScreen(connection.FullScreenScreen);
             if (session.HasNativeFullScreen)
-                session.EnterFullScreen();
+                session.EnterFullScreen(connection.FullScreenScreen);
             else
                 SetFullScreen(true);
         };
@@ -752,9 +778,38 @@ public partial class MainWindow : Window
         }
     }
 
+    private Button TabButton(string glyph, string tooltip, Thickness margin) => new()
+    {
+        Style = (Style)FindResource("GhostIconButton"),
+        Content = glyph,
+        Width = 24, Height = 24, FontSize = 11,
+        Margin = margin,
+        ToolTip = tooltip,
+    };
+
     // =====================================================================
     //  Pantalla completa
     // =====================================================================
+
+    /// <summary>
+    /// Lleva la ventana a la pantalla pedida (1..n; 0 = dejarla donde esta) antes de ponerla a
+    /// pantalla completa: tanto la ventana maximizada como el control RDP se van a pantalla
+    /// completa en el monitor donde esten.
+    /// </summary>
+    private void MoveToScreen(int screen)
+    {
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        if (screen <= 0 || screen > screens.Length)
+            return;
+        var bounds = screens[screen - 1].Bounds;
+        var source = PresentationSource.FromVisual(this);
+        var m = source?.CompositionTarget?.TransformFromDevice ?? System.Windows.Media.Matrix.Identity;
+        var topLeft = m.Transform(new Point(bounds.Left, bounds.Top));
+        if (WindowState != WindowState.Normal)
+            WindowState = WindowState.Normal;
+        Left = topLeft.X + 40;
+        Top = topLeft.Y + 40;
+    }
 
     private bool _fullScreen;
     private WindowState _stateBeforeFullScreen;

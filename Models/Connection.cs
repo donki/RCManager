@@ -57,6 +57,46 @@ public sealed class Connection
     /// <summary>Directorio de este PC con el que se abre el explorador (vacio = el perfil del usuario).</summary>
     public string LocalPath { get; set; } = string.Empty;
 
+    // --- Transferencias (SFTP/SCP y FTP/FTPS) ---
+
+    /// <summary>Cuantos ficheros a la vez (cada uno con su conexion al servidor), 1..8.</summary>
+    public int TransferParallel { get; set; } = 2;
+
+    /// <summary>Si el fichero ya existe en el destino: 0 = preguntar, 1 = sobrescribir, 2 = saltar.</summary>
+    public int TransferOnConflict { get; set; }
+
+    /// <summary>Poner al fichero transferido la fecha de modificacion del original.</summary>
+    public bool TransferPreserveTimes { get; set; } = true;
+
+    /// <summary>Reintentos por fichero cuando una transferencia falla (0..5).</summary>
+    public int TransferRetries { get; set; } = 1;
+
+    /// <summary>Enseñar ficheros ocultos (los que empiezan por punto y, en local, los marcados como ocultos).</summary>
+    public bool FilesShowHidden { get; set; }
+
+    /// <summary>Segundos entre señales de «sigo aqui» para que el servidor o un cortafuegos no corte la conexion (0 = no mandar).</summary>
+    public int FilesKeepAliveSeconds { get; set; } = 30;
+
+    /// <summary>Segundos de espera al conectar y en cada operacion.</summary>
+    public int FilesTimeoutSeconds { get; set; } = 20;
+
+    /// <summary>FTP: modo pasivo (el cliente abre las conexiones de datos; lo normal detras de un router) o activo.</summary>
+    public bool FtpPassive { get; set; } = true;
+
+    /// <summary>FTP: nombres de fichero en UTF-8 (lo normal hoy) o en Latin-1 (servidores viejos).</summary>
+    public bool FtpUtf8 { get; set; } = true;
+
+    // --- Pantalla y zoom (todas las clases) ---
+
+    /// <summary>En que pantalla ponerse a pantalla completa: 0 = la de la ventana, 1..n = esa pantalla.</summary>
+    public int FullScreenScreen { get; set; }
+
+    /// <summary>SSH y ficheros: tamaño de letra (zoom de la pestaña).</summary>
+    public double FontSize { get; set; } = 14;
+
+    /// <summary>RDP: escala del escritorio remoto en porcentaje (100, 125, 150, 175, 200), el zoom de la pestaña.</summary>
+    public int RdpScalePercent { get; set; } = 100;
+
     // ------------------------------------------------------------------ RDP: las opciones del
     // cliente de Windows (mstsc), pestaña a pestaña. Los valores por defecto son los de mstsc,
     // salvo las unidades (aqui si, para mover ficheros) y la pantalla (ajustada a la pestaña).

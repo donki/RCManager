@@ -25,13 +25,15 @@ public sealed class FileSession : ISession
 
     public async Task ConnectAsync(string password)
     {
-        IRemoteFileSystem fs = _connection.Kind == ConnectionKind.Ftp
-            ? await FtpFileSystem.ConnectAsync(_connection, password, CancellationToken.None)
-            : await SftpFileSystem.ConnectAsync(_connection, password, CancellationToken.None);
+        Func<CancellationToken, Task<IRemoteFileSystem>> open = _connection.Kind == ConnectionKind.Ftp
+            ? async ct => await FtpFileSystem.ConnectAsync(_connection, password, ct)
+            : async ct => await SftpFileSystem.ConnectAsync(_connection, password, ct);
+        var fs = await open(CancellationToken.None);
 
         var remote = new RemoteSide(fs);
         var local = new LocalSide(_connection.LocalPath);
-        _browser.Attach(local, remote, _connection.Host);
+        _browser.PaneFontSize = Math.Clamp(_connection.FontSize, 9, 28);
+        _browser.Attach(local, remote, _connection.Host, _connection, open);
         if (_connection.RemotePath.Length > 0)
             await _browser.RemotePaneNavigateAsync(_connection.RemotePath);
         TitleChanged?.Invoke(_connection.Kind == ConnectionKind.Ftp ? (_connection.FtpsMode > 0 ? "FTPS" : "FTP") : (_connection.UseScp ? "SCP" : "SFTP"));
@@ -39,9 +41,21 @@ public sealed class FileSession : ISession
 
     public void Focus() => _browser.FocusRemote();
 
+    /// <summary>Abre un fichero del servidor en el editor integrado.</summary>
+    public Task EditFileAsync(string path) => _browser.EditRemotePathAsync(path);
+
+    public bool CanZoom => true;
+
+    public string Zoom(int steps)
+    {
+        _browser.PaneFontSize = Math.Clamp(_browser.PaneFontSize + steps, 9, 28);
+        _connection.FontSize = _browser.PaneFontSize;
+        return $"{_browser.PaneFontSize:0} pt";
+    }
+
     public bool HasNativeFullScreen => false;
 
-    public void EnterFullScreen()
+    public void EnterFullScreen(int screen)
     {
     }
 

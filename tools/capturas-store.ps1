@@ -63,7 +63,7 @@ try {
   Shot $h "$out\01-ficheros.png"
   Stop-Process -Id $p.Id -Force; Start-Sleep 1
 
-  $p = Start-Process $exe -ArgumentList '--size','1600x900','--edit','"Terminal Server"','--edit-tab','4' -WindowStyle Minimized -PassThru
+  $p = Start-Process $exe -ArgumentList '--size','1600x900','--edit','"Terminal Server"','--edit-tab','5' -WindowStyle Minimized -PassThru
   Start-Sleep 6
   $h = $p.MainWindowHandle; [SW]::ShowWindowAsync($h, 4) | Out-Null; Start-Sleep 1; [SW]::MoveWindow($h, 100, 100, 1600, 900, $true) | Out-Null; Start-Sleep 2
   $dlg = (Windows $p.Id | Where-Object { $_.T -eq 'Conexión' } | Select-Object -First 1)
@@ -71,7 +71,7 @@ try {
   Shot $h "$out\02-arbol.png"
   Stop-Process -Id $p.Id -Force; Start-Sleep 1
 
-  $p = Start-Process $exe -ArgumentList '--size','1600x900','--edit','"Terminal Server"','--edit-tab','2' -WindowStyle Minimized -PassThru
+  $p = Start-Process $exe -ArgumentList '--size','1600x900','--edit','"Terminal Server"','--edit-tab','3' -WindowStyle Minimized -PassThru
   Start-Sleep 6
   $h = $p.MainWindowHandle; [SW]::ShowWindowAsync($h, 4) | Out-Null; Start-Sleep 1; [SW]::MoveWindow($h, 100, 100, 1600, 900, $true) | Out-Null; Start-Sleep 2
   $dlg = (Windows $p.Id | Where-Object { $_.T -eq 'Conexión' } | Select-Object -First 1)

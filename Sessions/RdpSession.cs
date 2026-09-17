@@ -85,7 +85,7 @@ public sealed class RdpSession : ISession
         try
         {
             if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
-                client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, 1, 1);
+                client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, (uint)_connection.RdpScalePercent, 100);
         }
         catch (Exception)
         {
@@ -204,6 +204,28 @@ public sealed class RdpSession : ISession
 
     public bool HasNativeFullScreen => true;
 
+    private static readonly int[] Scales = [100, 125, 150, 175, 200];
+
+    public bool CanZoom => true;
+
+    /// <summary>Escala del escritorio remoto (100..200 %): letra e iconos mas grandes sin perder nitidez (RDP 8.1+).</summary>
+    public string Zoom(int steps)
+    {
+        var index = Math.Clamp(Array.IndexOf(Scales, _connection.RdpScalePercent) + steps, 0, Scales.Length - 1);
+        _connection.RdpScalePercent = Scales[index < 0 ? 0 : index];
+        if (_connected)
+        {
+            try
+            {
+                var (w, h) = _rdp.FullScreen ? (System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Width, System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Height) : PixelSize();
+                if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
+                    client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, (uint)_connection.RdpScalePercent, 100);
+            }
+            catch (Exception) { }
+        }
+        return $"{_connection.RdpScalePercent} %";
+    }
+
     public event Action? LeftFullScreen;
 
     /// <summary>
@@ -211,14 +233,16 @@ public sealed class RdpSession : ISession
     /// resolucion del escritorio a la de la pantalla (RDP 8.1+): sin eso se escalaria la
     /// resolucion con la que se conecto, y saldria borroso.
     /// </summary>
-    public void EnterFullScreen()
+    public void EnterFullScreen(int screen)
     {
         try
         {
+            // El control se pone a pantalla completa en el monitor donde esta: si se pidio otro, la
+            // ventana se ha movido antes (MainWindow); aqui se usa el monitor del control.
             _rdp.FullScreen = true;
-            var screen = System.Windows.Forms.Screen.FromControl(_rdp).Bounds;
+            var bounds = System.Windows.Forms.Screen.FromControl(_rdp).Bounds;
             if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
-                client9.UpdateSessionDisplaySettings((uint)screen.Width, (uint)screen.Height, (uint)screen.Width, (uint)screen.Height, 0, 1, 1);
+                client9.UpdateSessionDisplaySettings((uint)bounds.Width, (uint)bounds.Height, (uint)bounds.Width, (uint)bounds.Height, 0, (uint)_connection.RdpScalePercent, 100);
         }
         catch (Exception)
         {

@@ -35,17 +35,64 @@ public sealed class FtpFileSystem : IRemoteFileSystem
         // Las fechas del listado (MLSD) vienen en UTC: a la hora de este PC.
         ftp.Config.TimeConversion = FtpDate.LocalTime;
         ftp.Config.ServerTimeZone = TimeZoneInfo.Utc;
-        ftp.Config.ConnectTimeout = 20000;
-        ftp.Config.DataConnectionType = FtpDataConnectionType.AutoPassive;
+        var timeout = Math.Max(5, connection.FilesTimeoutSeconds) * 1000;
+        ftp.Config.ConnectTimeout = timeout;
+        ftp.Config.ReadTimeout = timeout;
+        ftp.Config.DataConnectionConnectTimeout = timeout;
+        ftp.Config.DataConnectionReadTimeout = timeout;
+        ftp.Config.DataConnectionType = connection.FtpPassive ? FtpDataConnectionType.AutoPassive : FtpDataConnectionType.AutoActive;
+        ftp.Config.SocketKeepAlive = true;
+        ftp.Encoding = connection.FtpUtf8 ? System.Text.Encoding.UTF8 : System.Text.Encoding.Latin1;
         await ftp.Connect(cancellationToken);
         var initial = await ftp.GetWorkingDirectory(cancellationToken);
-        return new FtpFileSystem(ftp, string.IsNullOrEmpty(initial) ? "/" : initial);
+        var result = new FtpFileSystem(ftp, string.IsNullOrEmpty(initial) ? "/" : initial);
+        if (connection.FilesKeepAliveSeconds > 0)
+            result.StartKeepAlive(TimeSpan.FromSeconds(connection.FilesKeepAliveSeconds));
+        return result;
     }
+
+    // «Sigo aqui» (NOOP) cuando la conexion lleva un rato sin usarse; no se manda si hay una
+    // operacion en curso, porque el cliente no admite dos ordenes a la vez.
+    private System.Threading.Timer? _keepAlive;
+    private int _busy;
+    private DateTime _lastUse = DateTime.UtcNow;
+
+    private void StartKeepAlive(TimeSpan every)
+    {
+        _keepAlive = new System.Threading.Timer(async _ =>
+        {
+            if (DateTime.UtcNow - _lastUse < every || Interlocked.CompareExchange(ref _busy, 1, 0) != 0)
+                return;
+            try { await _ftp.Execute("NOOP"); } catch (Exception) { }
+            finally { _lastUse = DateTime.UtcNow; Interlocked.Exchange(ref _busy, 0); }
+        }, null, every, every);
+    }
+
+    /// <summary>Envuelve cada operacion: marca la conexion como ocupada para que el keep-alive no se cruce.</summary>
+    private async Task<T> UseAsync<T>(Func<Task<T>> operation)
+    {
+        while (Interlocked.CompareExchange(ref _busy, 1, 0) != 0)
+            await Task.Delay(50);
+        try { return await operation(); }
+        finally { _lastUse = DateTime.UtcNow; Interlocked.Exchange(ref _busy, 0); }
+    }
+
+    public Task<FileEntry?> StatAsync(string path, CancellationToken cancellationToken) => UseAsync(async () =>
+    {
+        var info = await _ftp.GetObjectInfo(path, true, cancellationToken);
+        return info is null ? null : new FileEntry(info.Name, info.FullName, info.Type is FtpObjectType.Directory or FtpObjectType.Link, info.Size, info.Modified == DateTime.MinValue ? null : info.Modified);
+    });
+
+    /// <summary>MFMT; los servidores que no lo tienen lo rechazan y se ignora.</summary>
+    public Task SetModifiedAsync(string path, DateTime modified, CancellationToken cancellationToken) =>
+        UseAsync(async () => { await _ftp.SetModifiedTime(path, modified.ToUniversalTime(), cancellationToken); return true; });
 
     /// <summary>Se sabe que es Unix cuando el listado trae permisos rwx (un IIS no los trae).</summary>
     public bool SupportsPermissions { get; private set; }
 
-    public async Task<IReadOnlyList<FileEntry>> ListAsync(string path, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<FileEntry>> ListAsync(string path, CancellationToken cancellationToken) => UseAsync(() => ListCoreAsync(path, cancellationToken));
+
+    private async Task<IReadOnlyList<FileEntry>> ListCoreAsync(string path, CancellationToken cancellationToken)
     {
         var items = await _ftp.GetListing(path, cancellationToken);
         var list = items
@@ -74,7 +121,10 @@ public sealed class FtpFileSystem : IRemoteFileSystem
             throw new IOException(reply.Message.Length > 0 ? reply.Message : "SITE CHOWN");
     }
 
-    public async Task DownloadAsync(string remotePath, string localPath, IProgress<long> progress, CancellationToken cancellationToken)
+    public Task DownloadAsync(string remotePath, string localPath, IProgress<long> progress, CancellationToken cancellationToken) =>
+        UseAsync(async () => { await DownloadCoreAsync(remotePath, localPath, progress, cancellationToken); return true; });
+
+    private async Task DownloadCoreAsync(string remotePath, string localPath, IProgress<long> progress, CancellationToken cancellationToken)
     {
         long previous = 0;
         var p = new Progress<FtpProgress>(x => { progress.Report(x.TransferredBytes - previous); previous = x.TransferredBytes; });
@@ -83,7 +133,10 @@ public sealed class FtpFileSystem : IRemoteFileSystem
             throw new IOException($"FTP: {RemotePath.Name(remotePath)}");
     }
 
-    public async Task UploadAsync(string localPath, string remotePath, IProgress<long> progress, CancellationToken cancellationToken)
+    public Task UploadAsync(string localPath, string remotePath, IProgress<long> progress, CancellationToken cancellationToken) =>
+        UseAsync(async () => { await UploadCoreAsync(localPath, remotePath, progress, cancellationToken); return true; });
+
+    private async Task UploadCoreAsync(string localPath, string remotePath, IProgress<long> progress, CancellationToken cancellationToken)
     {
         long previous = 0;
         var p = new Progress<FtpProgress>(x => { progress.Report(x.TransferredBytes - previous); previous = x.TransferredBytes; });
@@ -92,16 +145,17 @@ public sealed class FtpFileSystem : IRemoteFileSystem
             throw new IOException($"FTP: {RemotePath.Name(remotePath)}");
     }
 
-    public Task CreateDirectoryAsync(string path, CancellationToken cancellationToken) => _ftp.CreateDirectory(path, cancellationToken);
+    public Task CreateDirectoryAsync(string path, CancellationToken cancellationToken) => UseAsync(() => _ftp.CreateDirectory(path, cancellationToken));
 
-    public Task DeleteFileAsync(string path, CancellationToken cancellationToken) => _ftp.DeleteFile(path, cancellationToken);
+    public Task DeleteFileAsync(string path, CancellationToken cancellationToken) => UseAsync(async () => { await _ftp.DeleteFile(path, cancellationToken); return true; });
 
-    public Task DeleteDirectoryAsync(string path, CancellationToken cancellationToken) => _ftp.DeleteDirectory(path, cancellationToken);
+    public Task DeleteDirectoryAsync(string path, CancellationToken cancellationToken) => UseAsync(async () => { await _ftp.DeleteDirectory(path, cancellationToken); return true; });
 
-    public Task RenameAsync(string path, string newPath, CancellationToken cancellationToken) => _ftp.Rename(path, newPath, cancellationToken);
+    public Task RenameAsync(string path, string newPath, CancellationToken cancellationToken) => UseAsync(async () => { await _ftp.Rename(path, newPath, cancellationToken); return true; });
 
     public void Dispose()
     {
+        _keepAlive?.Dispose();
         try { _ftp.Disconnect().GetAwaiter().GetResult(); } catch (Exception) { }
         _ftp.Dispose();
     }

@@ -64,6 +64,9 @@ public sealed class SftpFileSystem : IRemoteFileSystem
     {
         var info = SshAuth.Build(connection, password);
         var sftp = new SftpClient(info);
+        sftp.OperationTimeout = TimeSpan.FromSeconds(Math.Max(5, connection.FilesTimeoutSeconds));
+        if (connection.FilesKeepAliveSeconds > 0)
+            sftp.KeepAliveInterval = TimeSpan.FromSeconds(connection.FilesKeepAliveSeconds);
         await Task.Run(sftp.Connect, cancellationToken);
 
         ScpClient? scp = null;
@@ -128,6 +131,19 @@ public sealed class SftpFileSystem : IRemoteFileSystem
         _sftp.UploadFile(file, remotePath, true, done => { progress.Report((long)done - previous); previous = (long)done; });
     }, cancellationToken);
 
+    public Task<FileEntry?> StatAsync(string path, CancellationToken cancellationToken) => Task.Run(() =>
+    {
+        try
+        {
+            var a = _sftp.GetAttributes(path);
+            return (FileEntry?)new FileEntry(RemotePath.Name(path), path, a.IsDirectory, a.Size, a.LastWriteTime);
+        }
+        catch (Renci.SshNet.Common.SftpPathNotFoundException) { return null; }
+    }, cancellationToken);
+
+    public Task SetModifiedAsync(string path, DateTime modified, CancellationToken cancellationToken) =>
+        Task.Run(() => _sftp.SetLastWriteTime(path, modified), cancellationToken);
+
     public Task CreateDirectoryAsync(string path, CancellationToken cancellationToken) => Task.Run(() => _sftp.CreateDirectory(path), cancellationToken);
 
     public Task DeleteFileAsync(string path, CancellationToken cancellationToken) => Task.Run(() => _sftp.DeleteFile(path), cancellationToken);
@@ -169,6 +185,6 @@ public static class SshAuth
         if (methods.Count == 0)
             throw new InvalidOperationException(Localization.Loc.Get("SshNoCredentials"));
 
-        return new ConnectionInfo(connection.Host, connection.Port, user, methods.ToArray()) { Timeout = TimeSpan.FromSeconds(20) };
+        return new ConnectionInfo(connection.Host, connection.Port, user, methods.ToArray()) { Timeout = TimeSpan.FromSeconds(Math.Max(5, connection.FilesTimeoutSeconds)) };
     }
 }

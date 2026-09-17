@@ -36,8 +36,16 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   (MIT) para FTP. En servidores Linux/Unix: columnas de permisos y propietario y un botón para
   cambiarlos (chmod por SFTP o `SITE CHMOD`; chown por id o, por nombre, con `chown` por SSH;
   en FTP `SITE CHOWN` si el servidor lo admite).
+- **Transferencias a medida** por conexión: ficheros a la vez (cada uno con su conexión), avisar
+  antes de sobrescribir (o sobrescribir/saltar), conservar fechas, ocultos, keep-alive, tiempo de
+  espera, reintentos; FTP pasivo/activo y codificación. **Editor de texto integrado** (doble clic en
+  un fichero de texto del servidor; Ctrl+S guarda en el servidor, Ctrl+F busca, pregunta al cerrar);
+  lo demás se abre con el programa por defecto de Windows. En local, doble clic = programa por defecto.
+- **Pantalla completa en el monitor que elijas** y **zoom** por pestaña (letra del terminal y de los
+  paneles; escala 100–200 % del escritorio RDP).
 - `sOCRCManager.exe --open "Nombre"` abre esa conexión al arrancar; `--edit "Nombre"` (y `--edit-tab N`)
-  abre su editor; `--size AnchoxAlto` fija el tamaño de la ventana (para capturas).
+  abre su editor; `--edit-file "Nombre" "/ruta"` abre ese fichero en el editor; `--size AnchoxAlto`
+  fija el tamaño de la ventana (para capturas).
 - Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
   (cifrada con DPAPI para el usuario de Windows).
 - **Importar desde Remote Desktop Manager**: en Ajustes ⚙; lee un `.rdm` exportado

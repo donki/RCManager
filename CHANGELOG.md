@@ -1,5 +1,26 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.17.0 — Transferencias a medida, editor integrado, zoom y pantalla
+
+- **Opciones de transferencia por conexión** (pestaña *Transferencias* de SFTP/SCP y FTP/FTPS):
+  ficheros a la vez (1–8, cada uno con su propia conexión al servidor), qué hacer si el fichero ya
+  existe (**avisar y confirmar** —por defecto—, sobrescribir o saltar, con «hacer lo mismo con los
+  demás»), conservar la fecha de modificación, ficheros ocultos al abrir, keep-alive, tiempo de
+  espera y reintentos; en FTP, pasivo/activo y codificación de nombres (UTF-8 / Latin-1).
+- **Botones habituales en los paneles**: abrir, editar (remoto), copiar ruta, ver ocultos; además de
+  subir, actualizar, nueva carpeta, renombrar, permisos, borrar y transferir.
+- **Editor de texto integrado** para el servidor: doble clic en un fichero de texto lo abre; Ctrl+S
+  guarda directamente en el servidor (misma codificación y finales de línea), Ctrl+F busca
+  (Intro / Mayús+Intro), Ctrl+± cambia la letra, y al cerrar con cambios pregunta. Los ficheros que
+  no son texto se abren con el programa por defecto de Windows a partir de una copia.
+- **Doble clic en local** abre el fichero con el programa por defecto de Windows.
+- **Pantalla completa en la pantalla que elijas** (General → «Pantalla completa en»): con varios
+  monitores, la ventana se lleva a ese antes de ponerse a pantalla completa (RDP y SSH).
+- **Zoom en la pestaña** (botones − y +): letra del terminal SSH y de los paneles de ficheros, y
+  escala del escritorio remoto en RDP (100–200 %, nítido con resolución dinámica). Se recuerda por
+  conexión.
+- `--edit-file "Conexión" "/ruta"` abre ese fichero en el editor al arrancar.
+
 ## 2026.9.16.5 — Importar .rdm pasa a Ajustes
 
 - El botón de importar desde Remote Desktop Manager sale de la barra del árbol (se usa una vez) y

@@ -44,6 +44,24 @@ public partial class ConnectionWindow : Window
         KeyBox.Text = connection.PrivateKeyPath;
         NotesBox.Text = connection.Notes;
 
+        // --- Pantalla completa: en que monitor ---
+        ScreenBox.Items.Add(new ComboBoxItem { Content = Loc.Get("ScreenCurrent") });
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        for (var i = 0; i < screens.Length; i++)
+            ScreenBox.Items.Add(new ComboBoxItem { Content = Loc.Format("ScreenN", i + 1, screens[i].Bounds.Width, screens[i].Bounds.Height, screens[i].Primary ? " · " + Loc.Get("ScreenPrimary") : string.Empty) });
+        ScreenBox.SelectedIndex = Math.Clamp(connection.FullScreenScreen, 0, screens.Length);
+
+        // --- Transferencias ---
+        ParallelBox.SelectedIndex = Math.Clamp(connection.TransferParallel, 1, 8) - 1;
+        RetriesBox.SelectedIndex = Math.Clamp(connection.TransferRetries, 0, 5);
+        ConflictBox.SelectedIndex = Math.Clamp(connection.TransferOnConflict, 0, 2);
+        PreserveTimesBox.IsChecked = connection.TransferPreserveTimes;
+        ShowHiddenBox.IsChecked = connection.FilesShowHidden;
+        KeepAliveBox.Text = connection.FilesKeepAliveSeconds.ToString();
+        TimeoutBox.Text = connection.FilesTimeoutSeconds.ToString();
+        FtpModeBox.SelectedIndex = connection.FtpPassive ? 0 : 1;
+        FtpEncodingBox.SelectedIndex = connection.FtpUtf8 ? 0 : 1;
+
         // --- Ficheros ---
         FtpsBox.SelectedIndex = Math.Clamp(connection.FtpsMode, 0, 2);
         ScpBox.IsChecked = connection.UseScp;
@@ -151,7 +169,11 @@ public partial class ConnectionWindow : Window
         ScpBox.Visibility = kind == ConnectionKind.Sftp ? Visibility.Visible : Visibility.Collapsed;
         foreach (var tab in new[] { DisplayTab, ResourcesTab, ExperienceTab, AdvancedTab })
             tab.Visibility = rdp ? Visibility.Visible : Visibility.Collapsed;
-        if (!rdp)
+        TransfersTab.Visibility = files ? Visibility.Visible : Visibility.Collapsed;
+        FtpOptionsPanel.Visibility = kind == ConnectionKind.Ftp ? Visibility.Visible : Visibility.Collapsed;
+        if (!rdp && !files)
+            Sections.SelectedItem = GeneralTab;
+        else if (rdp && ReferenceEquals(Sections.SelectedItem, TransfersTab) || files && !ReferenceEquals(Sections.SelectedItem, GeneralTab) && !ReferenceEquals(Sections.SelectedItem, TransfersTab))
             Sections.SelectedItem = GeneralTab;
     }
 
@@ -201,6 +223,18 @@ public partial class ConnectionWindow : Window
         c.PasswordProtected = Secrets.Protect(PasswordBox.Password);
         c.PrivateKeyPath = Kind is ConnectionKind.Ssh or ConnectionKind.Sftp ? KeyBox.Text.Trim() : string.Empty;
         c.Notes = NotesBox.Text.Trim();
+
+        // --- Pantalla completa / transferencias ---
+        c.FullScreenScreen = Math.Max(0, ScreenBox.SelectedIndex);
+        c.TransferParallel = ParallelBox.SelectedIndex + 1;
+        c.TransferRetries = Math.Max(0, RetriesBox.SelectedIndex);
+        c.TransferOnConflict = Math.Max(0, ConflictBox.SelectedIndex);
+        c.TransferPreserveTimes = PreserveTimesBox.IsChecked == true;
+        c.FilesShowHidden = ShowHiddenBox.IsChecked == true;
+        c.FilesKeepAliveSeconds = int.TryParse(KeepAliveBox.Text.Trim(), out var ka) && ka >= 0 ? ka : 30;
+        c.FilesTimeoutSeconds = int.TryParse(TimeoutBox.Text.Trim(), out var to) && to >= 5 ? to : 20;
+        c.FtpPassive = FtpModeBox.SelectedIndex != 1;
+        c.FtpUtf8 = FtpEncodingBox.SelectedIndex != 1;
 
         // --- Ficheros ---
         c.FtpsMode = Kind == ConnectionKind.Ftp ? Math.Max(0, FtpsBox.SelectedIndex) : 0;

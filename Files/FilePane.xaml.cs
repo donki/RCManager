@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -50,6 +51,10 @@ public partial class FilePane : UserControl
         ModeColumn.Header = Loc.Get("PermsPermissions");
         OwnerColumn.Header = Loc.Get("PermsOwner");
         PermissionsButton.ToolTip = Loc.Get("PermsTooltip");
+        OpenButton.ToolTip = Loc.Get("FilesOpen");
+        EditButton.ToolTip = Loc.Get("FilesEdit");
+        CopyPathButton.ToolTip = Loc.Get("FilesCopyPath");
+        HiddenButton.ToolTip = Loc.Get("FilesHidden");
         SizeChanged += (_, _) => FitNameColumn();
     }
 
@@ -63,6 +68,19 @@ public partial class FilePane : UserControl
     /// <summary>El usuario quiere llevar estos elementos al otro lado.</summary>
     public event Action<IReadOnlyList<FileEntry>>? TransferRequested;
 
+    /// <summary>Remoto: abrir este fichero de texto en el editor integrado.</summary>
+    public event Action<FileEntry>? EditRequested;
+
+    /// <summary>Remoto: bajar una copia y abrirla con el programa por defecto de Windows.</summary>
+    public event Action<FileEntry>? OpenExternalRequested;
+
+    /// <summary>Enseñar los ficheros ocultos (punto delante; en local, atributo oculto).</summary>
+    public bool ShowHidden
+    {
+        get => HiddenButton.IsChecked == true;
+        set => HiddenButton.IsChecked = value;
+    }
+
     /// <summary>Han soltado aqui elementos del otro panel: bajarlos o subirlos a este directorio.</summary>
     public event Action<FilePane, IReadOnlyList<FileEntry>>? DroppedFrom;
 
@@ -74,7 +92,65 @@ public partial class FilePane : UserControl
         SideTitle.Text = title;
         TransferButton.ToolTip = transferTooltip;
         TransferButton.Content = side.IsLocal ? "" : "";
+        EditButton.Visibility = side.IsLocal ? Visibility.Collapsed : Visibility.Visible;
         _ = NavigateAsync(side.InitialDirectory);
+    }
+
+    /// <summary>Doble clic o Intro: carpeta → entrar; fichero local → programa por defecto; fichero remoto → editor si es texto, si no el programa por defecto con una copia.</summary>
+    private void OpenEntry(FileEntry entry)
+    {
+        if (_side is null)
+            return;
+        if (_side.IsLocal)
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
+            catch (Exception ex) { PaneStatus.Text = ex.Message.ReplaceLineEndings(" "); }
+        }
+        else if (TextEditorWindow.LooksLikeText(entry))
+            EditRequested?.Invoke(entry);
+        else
+            OpenExternalRequested?.Invoke(entry);
+    }
+
+    private void OnOpenClick(object sender, RoutedEventArgs e)
+    {
+        if (List.SelectedItem is FileRow { Entry: { IsDirectory: false } entry })
+        {
+            if (_side?.IsLocal == false) OpenExternalRequested?.Invoke(entry);
+            else OpenEntry(entry);
+        }
+        else if (List.SelectedItem is FileRow { Entry.IsDirectory: true } dir)
+            _ = NavigateAsync(dir.Entry.FullPath);
+    }
+
+    private void OnEditClick(object sender, RoutedEventArgs e)
+    {
+        if (List.SelectedItem is FileRow { Entry: { IsDirectory: false } entry })
+            EditRequested?.Invoke(entry);
+    }
+
+    private void OnCopyPathClick(object sender, RoutedEventArgs e)
+    {
+        var paths = SelectedEntries.Select(x => x.FullPath).ToList();
+        if (paths.Count == 0 && CurrentPath.Length > 0)
+            paths.Add(CurrentPath);
+        if (paths.Count > 0)
+        {
+            Clipboard.SetText(string.Join(Environment.NewLine, paths));
+            PaneStatus.Text = Loc.Format("FilesPathCopied", paths.Count);
+        }
+    }
+
+    private void OnHiddenClick(object sender, RoutedEventArgs e) => _ = RefreshAsync();
+
+    private static bool IsHidden(FileEntry entry, bool local)
+    {
+        if (entry.Name.StartsWith('.'))
+            return true;
+        if (!local)
+            return false;
+        try { return (File.GetAttributes(entry.FullPath) & (FileAttributes.Hidden | FileAttributes.System)) != 0; }
+        catch (Exception) { return false; }
     }
 
     private void FitNameColumn() =>
@@ -132,9 +208,11 @@ public partial class FilePane : UserControl
         var cts = _listing = new CancellationTokenSource();
         try
         {
-            var entries = await _side.ListAsync(path, cts.Token);
+            var listed = await _side.ListAsync(path, cts.Token);
             if (cts.IsCancellationRequested)
                 return;
+            var showHidden = ShowHidden || path.Length == 0;
+            var entries = showHidden ? listed : listed.Where(e => !IsHidden(e, _side.IsLocal)).ToList();
             CurrentPath = path;
             PathBox.Text = path.Length == 0 ? Loc.Get("FilesThisPc") : path;
             List.ItemsSource = entries
@@ -172,8 +250,8 @@ public partial class FilePane : UserControl
     {
         if (List.SelectedItem is FileRow { Entry.IsDirectory: true } row)
             await NavigateAsync(row.Entry.FullPath);
-        else if (List.SelectedItem is FileRow)
-            TransferRequested?.Invoke(SelectedEntries);
+        else if (List.SelectedItem is FileRow file)
+            OpenEntry(file.Entry);
     }
 
     private void OnUpClick(object sender, RoutedEventArgs e) => _ = GoUpAsync();
