@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.17.2 — Elegir el monitor desde la pestaña
+
+- Con más de un monitor, cada pestaña lleva un botón de pantalla con la lista de monitores: al
+  elegir uno, la sesión (RDP, SSH o ficheros) se pone a pantalla completa en ese monitor, y si ya
+  estaba a pantalla completa en otro, se cambia. Queda guardado en la conexión.
+
 ## 2026.9.17.1 — Cambiar de sesión desde un botón
 
 - Botón de **sesiones abiertas** en la barra de estado (y en la barra de pantalla completa): un

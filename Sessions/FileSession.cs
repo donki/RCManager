@@ -55,6 +55,10 @@ public sealed class FileSession : ISession
 
     public bool HasNativeFullScreen => false;
 
+    public void LeaveFullScreen()
+    {
+    }
+
     public void EnterFullScreen(int screen)
     {
     }

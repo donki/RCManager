@@ -37,6 +37,9 @@ public interface ISession
     /// <summary>Zoom en pasos (+1 / -1). Devuelve el valor para enseñarlo («14 pt», «125 %»).</summary>
     string Zoom(int steps);
 
+    /// <summary>Salir de la pantalla completa nativa a peticion (por ejemplo para pasar a otro monitor).</summary>
+    void LeaveFullScreen();
+
     /// <summary>Ha salido de su pantalla completa nativa (por la barra o por el servidor).</summary>
     event Action? LeftFullScreen;
 }

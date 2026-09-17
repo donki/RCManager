@@ -143,6 +143,10 @@ public sealed class SshSession : ISession
 
     public bool HasNativeFullScreen => false;
 
+    public void LeaveFullScreen()
+    {
+    }
+
     public void EnterFullScreen(int screen)
     {
     }

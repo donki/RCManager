@@ -732,6 +732,14 @@ public partial class MainWindow : Window
             header.Children.Add(zoomIn);
             fullButton.Margin = new Thickness(0, 0, -6, 0);
         }
+        // Con mas de un monitor: elegir en cual va la pantalla completa, desde la propia pestaña.
+        if (System.Windows.Forms.Screen.AllScreens.Length > 1)
+        {
+            var screenButton = TabButton("", Loc.Get("ScreenTooltip"), new Thickness(session.CanZoom ? 0 : 8, 0, -6, 0));
+            screenButton.Click += (_, _) => ShowScreenMenu(screenButton, session, connection, tabOf: () => Tabs.SelectedItem as TabItem);
+            header.Children.Add(screenButton);
+            fullButton.Margin = new Thickness(0, 0, -6, 0);
+        }
         header.Children.Add(fullButton);
         header.Children.Add(closeButton);
         var tab = new TabItem { Header = header, Content = session.View };
@@ -777,6 +785,51 @@ public partial class MainWindow : Window
             SetStatus(Loc.Format("ConnectFailed", connection.Name, ex.Message));
             CloseTab(tab);
         }
+    }
+
+    /// <summary>
+    /// Menu con las pantallas del PC: al elegir una, la sesion se pone a pantalla completa en esa
+    /// pantalla (si ya estaba a pantalla completa en otra, sale y vuelve a entrar). Se guarda en la
+    /// conexion para la proxima vez.
+    /// </summary>
+    private void ShowScreenMenu(Button anchor, ISession session, Connection connection, Func<TabItem?> tabOf)
+    {
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        var menu = new ContextMenu();
+        for (var i = 0; i < screens.Length; i++)
+        {
+            var number = i + 1;
+            var item = new MenuItem
+            {
+                Header = Loc.Format("ScreenN", number, screens[i].Bounds.Width, screens[i].Bounds.Height, screens[i].Primary ? " · " + Loc.Get("ScreenPrimary") : string.Empty),
+                IsChecked = connection.FullScreenScreen == number,
+            };
+            item.Click += (_, _) =>
+            {
+                connection.FullScreenScreen = number;
+                _store.Save();
+                if (tabOf() is { } tab)
+                    Tabs.SelectedItem = tab;
+                if (session.HasNativeFullScreen)
+                {
+                    session.LeaveFullScreen();
+                    MoveToScreen(number);
+                    // El control tarda un instante en volver a la ventana; luego a la pantalla nueva.
+                    Dispatcher.BeginInvoke(() => session.EnterFullScreen(number), System.Windows.Threading.DispatcherPriority.Background);
+                }
+                else
+                {
+                    if (_fullScreen)
+                        SetFullScreen(false);
+                    MoveToScreen(number);
+                    SetFullScreen(true);
+                }
+            };
+            menu.Items.Add(item);
+        }
+        menu.PlacementTarget = anchor;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
     }
 
     private Button TabButton(string glyph, string tooltip, Thickness margin) => new()

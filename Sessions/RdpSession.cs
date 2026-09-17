@@ -204,6 +204,13 @@ public sealed class RdpSession : ISession
 
     public bool HasNativeFullScreen => true;
 
+    public bool IsFullScreen => _rdp.FullScreen;
+
+    public void LeaveFullScreen()
+    {
+        try { if (_rdp.FullScreen) _rdp.FullScreen = false; } catch (Exception) { }
+    }
+
     private static readonly int[] Scales = [100, 125, 150, 175, 200];
 
     public bool CanZoom => true;
