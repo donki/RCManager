@@ -74,7 +74,6 @@ public partial class ConnectionWindow : Window
         WidthBox.Text = connection.RdpWidth > 0 ? connection.RdpWidth.ToString() : string.Empty;
         HeightBox.Text = connection.RdpHeight > 0 ? connection.RdpHeight.ToString() : string.Empty;
         ColorBox.SelectedIndex = connection.RdpColorDepth switch { 15 => 0, 16 => 1, 24 => 2, _ => 3 };
-        StartFullScreenBox.IsChecked = connection.RdpStartFullScreen;
         MultiMonitorBox.IsChecked = connection.RdpMultiMonitor;
         ConnectionBarBox.IsChecked = connection.RdpConnectionBar;
 
@@ -268,7 +267,6 @@ public partial class ConnectionWindow : Window
             }
         }
         c.RdpColorDepth = ColorBox.SelectedIndex switch { 0 => 15, 1 => 16, 2 => 24, _ => 32 };
-        c.RdpStartFullScreen = StartFullScreenBox.IsChecked == true;
         c.RdpMultiMonitor = MultiMonitorBox.IsChecked == true;
         c.RdpConnectionBar = ConnectionBarBox.IsChecked == true;
 

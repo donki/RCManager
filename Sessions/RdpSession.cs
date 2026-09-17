@@ -29,13 +29,43 @@ public sealed class RdpSession : ISession
         _host = new WindowsFormsHost { Child = _rdp };
         View = _host;
 
-        _rdp.OnDisconnected += (_, e) => Ended?.Invoke(Describe(e.discReason));
+        _rdp.OnDisconnected += (_, e) =>
+        {
+            // Reconexion para pasar a todos los monitores: no es un cierre, se vuelve a entrar ya
+            // en pantalla completa (el control reparte los monitores al conectar, no despues).
+            if (_reconnectFullScreen)
+            {
+                _reconnectFullScreen = false;
+                _host.Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        var bounds = FullScreenBounds();
+                        _rdp.DesktopWidth = bounds.Width;
+                        _rdp.DesktopHeight = bounds.Height;
+                        _rdp.FullScreen = true;
+                        _rdp.Connect();
+                    }
+                    catch (Exception ex)
+                    {
+                        Ended?.Invoke(ex.Message);
+                    }
+                }, System.Windows.Threading.DispatcherPriority.Background);
+                return;
+            }
+            Ended?.Invoke(Describe(e.discReason));
+        };
         _rdp.OnConnected += (_, _) => TitleChanged?.Invoke(_connection.Name);
 
         // Pantalla completa del propio control: la barra superior de mstsc (se esconde sola y trae
         // el boton de restaurar) pide salir por este evento; hay que obedecer poniendo FullScreen
         // a false, el control no lo hace solo.
         _rdp.OnRequestLeaveFullScreen += (_, _) => _rdp.FullScreen = false;
+        // Los otros dos botones de esa barra tampoco hacen nada solos: cerrar pregunta al programa
+        // si puede (y entonces el control desconecta, y OnDisconnected cierra la pestaña), y
+        // minimizar pide al contenedor que se minimice.
+        _rdp.OnConfirmClose += (_, e) => e.pfAllowClose = true;
+        _rdp.OnRequestContainerMinimize += (_, _) => MinimizeRequested?.Invoke();
         _rdp.OnLeaveFullScreenMode += (_, _) =>
         {
             LeftFullScreen?.Invoke();
@@ -61,18 +91,26 @@ public sealed class RdpSession : ISession
         _rdp.OnConnected += (_, _) =>
         {
             _connected = true;
+            // Si ha entrado con mas de un monitor remoto (pantalla completa + todos los monitores).
+            _multiMonitorSession = false;
+            try
+            {
+                if (_rdp.GetOcx() is MSTSCLib.IMsRdpClientNonScriptable5 ns && ns.RemoteMonitorCount > 1)
+                    _multiMonitorSession = true;
+            }
+            catch (Exception) { }
             // El zoom guardado de otras sesiones (escala del escritorio) se pide nada mas entrar:
             // el servidor no lo recuerda, y sin esto se abriria siempre al 100 %.
             if (_connection.RdpScalePercent != 100)
                 _host.Dispatcher.BeginInvoke(ApplyScale, System.Windows.Threading.DispatcherPriority.Background);
-            if (_connection.RdpStartFullScreen && !_rdp.FullScreen)
-                _host.Dispatcher.BeginInvoke(() => EnterFullScreen(_connection.FullScreenScreen), System.Windows.Threading.DispatcherPriority.Background);
         };
         _rdp.OnDisconnected += (_, _) => { _connected = false; };
     }
 
     private readonly System.Windows.Threading.DispatcherTimer _resize;
     private bool _connected;
+    private bool _reconnectFullScreen;
+    private bool _multiMonitorSession;
 
     /// <summary>Tamaño del control en pixeles fisicos (el DPI de la pantalla ya aplicado).</summary>
     private (int Width, int Height) PixelSize()
@@ -88,8 +126,28 @@ public sealed class RdpSession : ISession
     /// <summary>Pide al servidor el tamaño de escritorio que cabe ahora en la pestaña.</summary>
     private void ApplyDisplaySize()
     {
-        if (!_connected || _rdp.FullScreen || !_connection.RdpSmartSizing || _connection.RdpWidth > 0)
+        if (!_connected || _rdp.FullScreen)
             return;
+        // Vuelta de todos los monitores a la pestaña: un solo monitor, del tamaño de la pestaña
+        // (o el fijo elegido), aunque no se use «ajustar a la pestaña».
+        if (_multiMonitorSession)
+        {
+            _multiMonitorSession = false;
+            if (!_connection.RdpSmartSizing && _connection.RdpWidth > 0)
+            {
+                try
+                {
+                    if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 fixedClient)
+                        fixedClient.UpdateSessionDisplaySettings((uint)_connection.RdpWidth, (uint)_connection.RdpHeight, (uint)_connection.RdpWidth, (uint)_connection.RdpHeight, 0, (uint)_connection.RdpScalePercent, 100);
+                }
+                catch (Exception) { }
+                return;
+            }
+        }
+        else if (!_connection.RdpSmartSizing || _connection.RdpWidth > 0)
+        {
+            return;
+        }
         var (w, h) = PixelSize();
         try
         {
@@ -166,11 +224,8 @@ public sealed class RdpSession : ISession
 
         // Tamaño del escritorio: el fijo elegido o, si no, el de la pestaña ahora mismo en pixeles
         // fisicos. Con «ajustar a la pestaña» luego sigue a la ventana (resolucion dinamica) y,
-        // si el servidor no lo admite, SmartSizing lo escala. Si se abre ya en pantalla completa,
-        // el de la pantalla (con todos los monitores, el control añade los demas el solo).
-        var (width, height) = c.RdpStartFullScreen
-            ? (FullScreenBounds().Width, FullScreenBounds().Height)
-            : c.RdpWidth > 0 && c.RdpHeight > 0 ? (c.RdpWidth, c.RdpHeight) : PixelSize();
+        // si el servidor no lo admite, SmartSizing lo escala.
+        var (width, height) = c.RdpWidth > 0 && c.RdpHeight > 0 ? (c.RdpWidth, c.RdpHeight) : PixelSize();
         _rdp.DesktopWidth = width;
         _rdp.DesktopHeight = height;
 
@@ -238,13 +293,6 @@ public sealed class RdpSession : ISession
             gateway.GatewayUsageMethod = 0;
         }
 
-        // Como mstsc con el deslizador al maximo: pantalla completa desde el primer momento, y con
-        // «todos los monitores» el control reparte un monitor remoto por cada pantalla local.
-        if (c.RdpStartFullScreen)
-        {
-            try { _rdp.FullScreen = true; } catch (Exception) { }
-        }
-
         _rdp.Connect();
         return Task.CompletedTask;
     }
@@ -275,6 +323,9 @@ public sealed class RdpSession : ISession
 
     public event Action? LeftFullScreen;
 
+    /// <summary>El boton de minimizar de la barra de conexion en pantalla completa.</summary>
+    public event Action? MinimizeRequested;
+
     /// <summary>
     /// A toda la pantalla con el control de Windows. Ademas se le pide al servidor que cambie la
     /// resolucion del escritorio a la de la pantalla (RDP 8.1+): sin eso se escalaria la
@@ -284,13 +335,26 @@ public sealed class RdpSession : ISession
     {
         try
         {
+            // Todos los monitores: el control solo los reparte al conectar, asi que si la sesion
+            // entro con uno (en la pestaña) hay que reconectar ya en pantalla completa. Con un
+            // solo monitor local no hay nada que repartir.
+            if (_connection.RdpMultiMonitor && System.Windows.Forms.Screen.AllScreens.Length > 1)
+            {
+                if (_multiMonitorSession)
+                {
+                    _rdp.FullScreen = true;
+                    return;
+                }
+                if (_connected)
+                {
+                    _reconnectFullScreen = true;
+                    _rdp.Disconnect();
+                    return;
+                }
+            }
             // El control se pone a pantalla completa en el monitor donde esta: si se pidio otro, la
             // ventana se ha movido antes (MainWindow); aqui se usa el monitor del control.
             _rdp.FullScreen = true;
-            // Con todos los monitores el control ya pide al servidor un monitor remoto por cada
-            // pantalla local: pedirle aqui el tamaño de una sola lo desharia.
-            if (_connection.RdpMultiMonitor)
-                return;
             var bounds = System.Windows.Forms.Screen.FromControl(_rdp).Bounds;
             if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
                 client9.UpdateSessionDisplaySettings((uint)bounds.Width, (uint)bounds.Height, (uint)bounds.Width, (uint)bounds.Height, 0, (uint)_connection.RdpScalePercent, 100);

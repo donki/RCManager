@@ -245,8 +245,7 @@
                                 </StackPanel>
                             </Grid>
                             <TextBlock Text="{loc:T RdpSizeHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
-                            <CheckBox x:Name="StartFullScreenBox" Style="{StaticResource Check}" Content="{loc:T RdpStartFullScreen}" Margin="0,10,0,0" />
-                            <CheckBox x:Name="MultiMonitorBox" Style="{StaticResource Check}" Content="{loc:T RdpMultiMonitor}" />
+                            <CheckBox x:Name="MultiMonitorBox" Style="{StaticResource Check}" Content="{loc:T RdpMultiMonitor}" Margin="0,10,0,0" />
                             <TextBlock Text="{loc:T RdpMultiMonitorHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
 
                             <TextBlock Text="{loc:T RdpColorDepth}" Style="{StaticResource FieldLabel}" />

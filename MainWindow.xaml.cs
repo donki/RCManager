@@ -754,6 +754,8 @@ public partial class MainWindow : Window
 
         closeButton.Click += (_, _) => CloseTab(tab);
         session.TitleChanged += t => Dispatcher.BeginInvoke(() => title.Text = t.Length > 0 ? $"{connection.Name} · {t}" : connection.Name);
+        if (session is RdpSession rdp)
+            rdp.MinimizeRequested += () => Dispatcher.BeginInvoke(() => WindowState = WindowState.Minimized);
         session.Ended += reason => Dispatcher.BeginInvoke(() =>
         {
             SetStatus(reason is null ? Loc.Format("SessionClosed", connection.Name) : Loc.Format("SessionEnded", connection.Name, reason));

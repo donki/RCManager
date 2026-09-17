@@ -1,5 +1,18 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.17.5 — Todos los monitores de verdad; cerrar y minimizar desde la barra
+
+- **Usar todos los monitores**: el control de mstsc reparte los monitores al conectar, no después;
+  por eso una sesión abierta en la pestaña (un monitor) no ganaba el segundo al pasar a pantalla
+  completa. Ahora, con esa opción y más de una pantalla local, el botón de pantalla completa
+  reconecta la sesión ya a pantalla completa (un par de segundos) y entra con un monitor remoto por
+  cada pantalla local. Al volver a la pestaña queda un solo monitor del tamaño de la pestaña.
+- En pantalla completa de RDP, los botones de **cerrar** y **minimizar** de la barra de conexión
+  de mstsc no hacían nada: el control solo avisa al programa y espera que sea él quien actúe.
+  Ahora cerrar desconecta (y cierra la pestaña) y minimizar minimiza la ventana.
+- Quitada la opción «Abrir en pantalla completa» de la versión anterior: una conexión nueva se abre
+  siempre en la pestaña; a pantalla completa se va con su botón.
+
 ## 2026.9.17.4 — Todos los monitores como mstsc y abrir en pantalla completa
 
 - **Usar todos los monitores** vuelve a funcionar como en mstsc: en pantalla completa el escritorio
