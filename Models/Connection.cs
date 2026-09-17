@@ -113,6 +113,9 @@ public sealed class Connection
     /// <summary>Bits por pixel: 15, 16, 24 o 32.</summary>
     public int RdpColorDepth { get; set; } = 32;
 
+    /// <summary>Abrir ya en pantalla completa al conectar (el deslizador de mstsc al maximo).</summary>
+    public bool RdpStartFullScreen { get; set; }
+
     /// <summary>Pantalla completa en todos los monitores.</summary>
     public bool RdpMultiMonitor { get; set; }
 

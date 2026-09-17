@@ -1,5 +1,15 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.17.4 — Todos los monitores como mstsc y abrir en pantalla completa
+
+- **Usar todos los monitores** vuelve a funcionar como en mstsc: en pantalla completa el escritorio
+  remoto tiene un monitor por cada pantalla local. Al entrar en pantalla completa se le pedía al
+  servidor el tamaño de una sola pantalla (para la resolución dinámica) y eso deshacía el
+  multimonitor; ahora con esa opción el control lleva la geometría él solo.
+- Nueva opción **Abrir en pantalla completa** (pestaña *Pantalla*): la sesión se conecta ya a
+  pantalla completa, como mstsc con el deslizador de tamaño al máximo, en el monitor elegido en
+  «Pantalla completa en».
+
 ## 2026.9.17.3 — El zoom se recuerda; fuera el botón de monitores
 
 - El **zoom de la pestaña se recuerda** para la siguiente sesión también en RDP: la escala del

@@ -245,6 +245,9 @@
                                 </StackPanel>
                             </Grid>
                             <TextBlock Text="{loc:T RdpSizeHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            <CheckBox x:Name="StartFullScreenBox" Style="{StaticResource Check}" Content="{loc:T RdpStartFullScreen}" Margin="0,10,0,0" />
+                            <CheckBox x:Name="MultiMonitorBox" Style="{StaticResource Check}" Content="{loc:T RdpMultiMonitor}" />
+                            <TextBlock Text="{loc:T RdpMultiMonitorHint}" Style="{StaticResource HintText}" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
 
                             <TextBlock Text="{loc:T RdpColorDepth}" Style="{StaticResource FieldLabel}" />
                             <ComboBox x:Name="ColorBox" Style="{StaticResource DeviceCombo}" MinWidth="0" Height="34">
@@ -254,8 +257,7 @@
                                 <ComboBoxItem Content="{loc:T RdpColor32}" />
                             </ComboBox>
 
-                            <CheckBox x:Name="MultiMonitorBox" Style="{StaticResource Check}" Content="{loc:T RdpMultiMonitor}" Margin="0,14,0,0" />
-                            <CheckBox x:Name="ConnectionBarBox" Style="{StaticResource Check}" Content="{loc:T RdpConnectionBar}" />
+                            <CheckBox x:Name="ConnectionBarBox" Style="{StaticResource Check}" Content="{loc:T RdpConnectionBar}" Margin="0,14,0,0" />
                         </StackPanel>
                     </Border>
                 </ScrollViewer>
