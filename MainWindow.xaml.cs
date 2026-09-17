@@ -748,6 +748,7 @@ public partial class MainWindow : Window
         var entry = (tab, session, connection);
         _open.Add(entry);
         Tabs.Items.Add(tab);
+        UpdateSessionsButton();
         Tabs.SelectedItem = tab;
         EmptyTabs.Visibility = Visibility.Collapsed;
 
@@ -919,10 +920,63 @@ public partial class MainWindow : Window
             ShowFullScreenBar();
     }
 
+    /// <summary>Menu con las sesiones abiertas: se elige una y pasa a ser la pestaña activa.</summary>
+    private void OnSessionsClick(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu();
+        foreach (var (tab, _, connection) in _open)
+        {
+            var item = new MenuItem
+            {
+                Header = ((tab.Header as StackPanel)?.Children.OfType<TextBlock>().FirstOrDefault()?.Text) ?? connection.Name,
+                IsChecked = ReferenceEquals(Tabs.SelectedItem, tab),
+                Icon = new TextBlock { Text = connection.Kind switch { ConnectionKind.Ssh => "", ConnectionKind.Sftp or ConnectionKind.Ftp => "", _ => "" }, FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets") },
+            };
+            var target = tab;
+            item.Click += (_, _) => SelectTab(target);
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count == 0)
+            return;
+        menu.PlacementTarget = sender as UIElement;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+        menu.IsOpen = true;
+    }
+
+    private void SelectTab(TabItem tab)
+    {
+        Tabs.SelectedItem = tab;
+        if (_fullScreen)
+        {
+            HideTabHeaders(true);
+            FullScreenTitle.Text = _open.FirstOrDefault(x => ReferenceEquals(x.Tab, tab)).Connection?.Name ?? string.Empty;
+        }
+        if (_open.FirstOrDefault(x => ReferenceEquals(x.Tab, tab)).Session is { } session)
+            Dispatcher.BeginInvoke(session.Focus, System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    private void CycleTab(int direction)
+    {
+        if (_open.Count < 2)
+            return;
+        var index = _open.FindIndex(x => ReferenceEquals(x.Tab, Tabs.SelectedItem));
+        var next = ((index < 0 ? 0 : index) + direction + _open.Count) % _open.Count;
+        SelectTab(_open[next].Tab);
+    }
+
+    private void UpdateSessionsButton() => SessionsButton.Visibility = _open.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
-        if (e.Key == Key.Escape && _fullScreen && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        // Ctrl+Tab / Ctrl+Mayus+Tab: siguiente / anterior pestaña (con el escritorio remoto enfocado
+        // las teclas se van al remoto; para eso esta el boton de sesiones).
+        if (e.Key == Key.Tab && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        {
+            CycleTab((Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? -1 : 1);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && _fullScreen && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
         {
             SetFullScreen(false);
             e.Handled = true;
@@ -944,6 +998,7 @@ public partial class MainWindow : Window
         _open.RemoveAt(index);
         session.Disconnect();
         Tabs.Items.Remove(tab);
+        UpdateSessionsButton();
         EmptyTabs.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (Tabs.Items.Count == 0 && _fullScreen)
             SetFullScreen(false);

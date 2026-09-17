@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.17.1 — Cambiar de sesión desde un botón
+
+- Botón de **sesiones abiertas** en la barra de estado (y en la barra de pantalla completa): un
+  menú con todas las pestañas para pasar a la que quieras, también cuando el escritorio remoto se
+  queda con el teclado. Ctrl+Tab / Ctrl+Mayús+Tab pasan a la siguiente / anterior.
+
 ## 2026.9.17.0 — Transferencias a medida, editor integrado, zoom y pantalla
 
 - **Opciones de transferencia por conexión** (pestaña *Transferencias* de SFTP/SCP y FTP/FTPS):

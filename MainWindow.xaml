@@ -93,8 +93,14 @@
         </Grid>
 
         <!-- ============================ Estado ============================ -->
-        <Border x:Name="StatusBar" Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource CardBackground}" Padding="10,4">
-            <TextBlock x:Name="StatusText" Style="{StaticResource HintText}" TextTrimming="CharacterEllipsis" />
+        <Border x:Name="StatusBar" Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource CardBackground}" Padding="10,2">
+            <DockPanel>
+                <!-- Sesiones abiertas: cambiar de pestaña sin buscar la cabecera (tambien cuando el
+                     escritorio remoto se queda con el teclado). Ctrl+Tab / Ctrl+Mayus+Tab tambien. -->
+                <Button x:Name="SessionsButton" DockPanel.Dock="Right" Style="{StaticResource GhostIconButton}" Content="&#xE7C4;"
+                        ToolTip="{loc:T SessionsTooltip}" Click="OnSessionsClick" Width="30" Height="26" FontSize="13" Visibility="Collapsed" />
+                <TextBlock x:Name="StatusText" Style="{StaticResource HintText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </DockPanel>
         </Border>
 
         <!-- Pantalla completa de la ventana (SSH): barra superior que se esconde sola y aparece al
@@ -109,6 +115,8 @@
                            Foreground="{DynamicResource TextPrimary}" />
                 <Button x:Name="ExitFullScreenButton" Style="{StaticResource IconButton}" Content="&#xE73F;"
                         ToolTip="{loc:T ExitFullScreenTooltip}" Click="OnToggleFullScreenClick" />
+                <Button x:Name="FullScreenSessionsButton" Style="{StaticResource GhostIconButton}" Content="&#xE7C4;"
+                        ToolTip="{loc:T SessionsTooltip}" Click="OnSessionsClick" />
                 <Button x:Name="FullScreenCloseButton" Style="{StaticResource DangerIconButton}" Content="&#xE711;"
                         ToolTip="{loc:T DisconnectTooltip}" Click="OnFullScreenCloseClick" />
             </StackPanel>
