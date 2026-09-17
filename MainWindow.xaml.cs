@@ -788,9 +788,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Menu con las pantallas del PC: al elegir una, la sesion se pone a pantalla completa en esa
-    /// pantalla (si ya estaba a pantalla completa en otra, sale y vuelve a entrar). Se guarda en la
-    /// conexion para la proxima vez.
+    /// Menu con las pantallas del PC: al elegir una, la ventana entera (con sus pestañas) se lleva
+    /// a esa pantalla, tal como estaba (normal o maximizada). La pantalla completa sigue siendo el
+    /// boton de al lado, y se hace en el monitor donde este la ventana. Se guarda en la conexion.
     /// </summary>
     private void ShowScreenMenu(Button anchor, ISession session, Connection connection, Func<TabItem?> tabOf)
     {
@@ -810,20 +810,11 @@ public partial class MainWindow : Window
                 _store.Save();
                 if (tabOf() is { } tab)
                     Tabs.SelectedItem = tab;
-                if (session.HasNativeFullScreen)
-                {
-                    session.LeaveFullScreen();
-                    MoveToScreen(number);
-                    // El control tarda un instante en volver a la ventana; luego a la pantalla nueva.
-                    Dispatcher.BeginInvoke(() => session.EnterFullScreen(number), System.Windows.Threading.DispatcherPriority.Background);
-                }
-                else
-                {
-                    if (_fullScreen)
-                        SetFullScreen(false);
-                    MoveToScreen(number);
-                    SetFullScreen(true);
-                }
+                var wasMaximized = WindowState == WindowState.Maximized;
+                MoveToScreen(number);
+                if (wasMaximized)
+                    WindowState = WindowState.Maximized;
+                Dispatcher.BeginInvoke(session.Focus, System.Windows.Threading.DispatcherPriority.Input);
             };
             menu.Items.Add(item);
         }
