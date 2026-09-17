@@ -21,7 +21,7 @@ namespace SocRcManager;
 public partial class MainWindow : Window
 {
     private readonly Store _store = new();
-    private readonly AppSettings _settings = AppSettings.Load();
+    private readonly AppSettings _settings = AppSettings.Current = AppSettings.Load();
     private readonly CloudSync _sync;
     private readonly List<(TabItem Tab, ISession Session, Connection Connection)> _open = [];
 
@@ -732,14 +732,6 @@ public partial class MainWindow : Window
             header.Children.Add(zoomIn);
             fullButton.Margin = new Thickness(0, 0, -6, 0);
         }
-        // Con mas de un monitor: elegir en cual va la pantalla completa, desde la propia pestaña.
-        if (System.Windows.Forms.Screen.AllScreens.Length > 1)
-        {
-            var screenButton = TabButton("", Loc.Get("ScreenTooltip"), new Thickness(session.CanZoom ? 0 : 8, 0, -6, 0));
-            screenButton.Click += (_, _) => ShowScreenMenu(screenButton, session, connection, tabOf: () => Tabs.SelectedItem as TabItem);
-            header.Children.Add(screenButton);
-            fullButton.Margin = new Thickness(0, 0, -6, 0);
-        }
         header.Children.Add(fullButton);
         header.Children.Add(closeButton);
         var tab = new TabItem { Header = header, Content = session.View };
@@ -785,42 +777,6 @@ public partial class MainWindow : Window
             SetStatus(Loc.Format("ConnectFailed", connection.Name, ex.Message));
             CloseTab(tab);
         }
-    }
-
-    /// <summary>
-    /// Menu con las pantallas del PC: al elegir una, la ventana entera (con sus pestañas) se lleva
-    /// a esa pantalla, tal como estaba (normal o maximizada). La pantalla completa sigue siendo el
-    /// boton de al lado, y se hace en el monitor donde este la ventana. Se guarda en la conexion.
-    /// </summary>
-    private void ShowScreenMenu(Button anchor, ISession session, Connection connection, Func<TabItem?> tabOf)
-    {
-        var screens = System.Windows.Forms.Screen.AllScreens;
-        var menu = new ContextMenu();
-        for (var i = 0; i < screens.Length; i++)
-        {
-            var number = i + 1;
-            var item = new MenuItem
-            {
-                Header = Loc.Format("ScreenN", number, screens[i].Bounds.Width, screens[i].Bounds.Height, screens[i].Primary ? " · " + Loc.Get("ScreenPrimary") : string.Empty),
-                IsChecked = connection.FullScreenScreen == number,
-            };
-            item.Click += (_, _) =>
-            {
-                connection.FullScreenScreen = number;
-                _store.Save();
-                if (tabOf() is { } tab)
-                    Tabs.SelectedItem = tab;
-                var wasMaximized = WindowState == WindowState.Maximized;
-                MoveToScreen(number);
-                if (wasMaximized)
-                    WindowState = WindowState.Maximized;
-                Dispatcher.BeginInvoke(session.Focus, System.Windows.Threading.DispatcherPriority.Input);
-            };
-            menu.Items.Add(item);
-        }
-        menu.PlacementTarget = anchor;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        menu.IsOpen = true;
     }
 
     private Button TabButton(string glyph, string tooltip, Thickness margin) => new()

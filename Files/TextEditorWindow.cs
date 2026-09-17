@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -49,6 +49,17 @@ public sealed class TextEditorWindow : Window
     private bool _dirty;
 
     public event Action? Saved;
+
+    /// <summary>Letra del editor; se guarda para la proxima vez (es un ajuste de la aplicacion, no de la conexion).</summary>
+    private void SetFontSize(double size)
+    {
+        _text.FontSize = Math.Clamp(size, 9, 28);
+        if (AppSettings.Current is { } settings)
+        {
+            settings.EditorFontSize = _text.FontSize;
+            settings.Save();
+        }
+    }
 
     private TextEditorWindow(Window owner, IRemoteFileSystem fs, FileEntry entry, string content, Encoding encoding, bool crlf)
     {
@@ -118,7 +129,7 @@ public sealed class TextEditorWindow : Window
             AcceptsTab = true,
             TextWrapping = TextWrapping.NoWrap,
             FontFamily = new FontFamily("Cascadia Mono, Consolas, Courier New"),
-            FontSize = 13,
+            FontSize = Math.Clamp(AppSettings.Current?.EditorFontSize ?? 13, 9, 28),
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             Foreground = (Brush)FindResource("TextPrimary"),
@@ -142,8 +153,8 @@ public sealed class TextEditorWindow : Window
                 return;
             if (e.Key == Key.S) { e.Handled = true; await SaveAsync(); }
             else if (e.Key == Key.F) { e.Handled = true; ShowFind(); }
-            else if (e.Key == Key.OemPlus || e.Key == Key.Add) { e.Handled = true; _text.FontSize = Math.Min(28, _text.FontSize + 1); }
-            else if (e.Key == Key.OemMinus || e.Key == Key.Subtract) { e.Handled = true; _text.FontSize = Math.Max(9, _text.FontSize - 1); }
+            else if (e.Key == Key.OemPlus || e.Key == Key.Add) { e.Handled = true; SetFontSize(_text.FontSize + 1); }
+            else if (e.Key == Key.OemMinus || e.Key == Key.Subtract) { e.Handled = true; SetFontSize(_text.FontSize - 1); }
         };
         Closing += (_, e) =>
         {

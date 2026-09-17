@@ -1,5 +1,14 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.17.3 — El zoom se recuerda; fuera el botón de monitores
+
+- El **zoom de la pestaña se recuerda** para la siguiente sesión también en RDP: la escala del
+  escritorio guardada se pide al servidor nada más conectar (antes se guardaba pero se abría
+  siempre al 100 %). El tamaño de letra del editor integrado (Ctrl + / Ctrl −) también se guarda.
+- Quitado el botón de monitores de la pestaña: RDP no puede enseñar los monitores físicos del
+  equipo remoto (la sesión tiene la pantalla que le da el cliente). El monitor de la pantalla
+  completa y «usar todos los monitores» siguen en la pestaña *Pantalla* del editor de conexión.
+
 ## 2026.9.17.2 — Elegir el monitor desde la pestaña
 
 - Con más de un monitor, cada pestaña lleva un botón de pantalla con la lista de monitores: al

@@ -38,6 +38,12 @@ public sealed class AppSettings
     public Guid? SelectedConnectionId { get; set; }
     public double TreeWidth { get; set; }
 
+    /// <summary>Letra del editor de texto integrado (Ctrl + y Ctrl -), comun a todas las conexiones.</summary>
+    public double EditorFontSize { get; set; } = 13;
+
+    /// <summary>La instancia viva de la ventana principal, para quien no la tiene a mano (el editor).</summary>
+    public static AppSettings? Current { get; set; }
+
     [JsonIgnore]
     public OAuthTokens? Tokens
     {

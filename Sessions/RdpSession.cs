@@ -58,7 +58,14 @@ public sealed class RdpSession : ISession
                 _resize.Start();
             }
         };
-        _rdp.OnConnected += (_, _) => { _connected = true; };
+        _rdp.OnConnected += (_, _) =>
+        {
+            _connected = true;
+            // El zoom guardado de otras sesiones (escala del escritorio) se pide nada mas entrar:
+            // el servidor no lo recuerda, y sin esto se abriria siempre al 100 %.
+            if (_connection.RdpScalePercent != 100)
+                _host.Dispatcher.BeginInvoke(ApplyScale, System.Windows.Threading.DispatcherPriority.Background);
+        };
         _rdp.OnDisconnected += (_, _) => { _connected = false; };
     }
 
@@ -90,6 +97,25 @@ public sealed class RdpSession : ISession
         catch (Exception)
         {
             // Servidor sin resolucion dinamica: se queda el SmartSizing (escalado) de la conexion.
+        }
+    }
+
+    /// <summary>Pide al servidor el escritorio con el tamaño que tiene y la escala guardada.</summary>
+    private void ApplyScale()
+    {
+        if (!_connected)
+            return;
+        try
+        {
+            var (w, h) = _rdp.FullScreen
+                ? (System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Width, System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Height)
+                : _connection.RdpWidth > 0 && _connection.RdpHeight > 0 ? (_connection.RdpWidth, _connection.RdpHeight) : PixelSize();
+            if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
+                client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, (uint)_connection.RdpScalePercent, 100);
+        }
+        catch (Exception)
+        {
+            // Servidor sin resolucion dinamica: se queda como se conecto.
         }
     }
 
@@ -220,16 +246,7 @@ public sealed class RdpSession : ISession
     {
         var index = Math.Clamp(Array.IndexOf(Scales, _connection.RdpScalePercent) + steps, 0, Scales.Length - 1);
         _connection.RdpScalePercent = Scales[index < 0 ? 0 : index];
-        if (_connected)
-        {
-            try
-            {
-                var (w, h) = _rdp.FullScreen ? (System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Width, System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Height) : PixelSize();
-                if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
-                    client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, (uint)_connection.RdpScalePercent, 100);
-            }
-            catch (Exception) { }
-        }
+        ApplyScale();
         return $"{_connection.RdpScalePercent} %";
     }
 
