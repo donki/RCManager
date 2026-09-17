@@ -31,19 +31,25 @@ public sealed class RdpSession : ISession
 
         _rdp.OnDisconnected += (_, e) =>
         {
-            // Reconexion para pasar a todos los monitores: no es un cierre, se vuelve a entrar ya
-            // en pantalla completa (el control reparte los monitores al conectar, no despues).
-            if (_reconnectFullScreen)
+            // Reconexion para entrar o salir de «todos los monitores»: no es un cierre. El control
+            // solo reparte los monitores al conectar (y con UseMultimon se va solo a pantalla
+            // completa), asi que la pestaña conecta sin multimonitor y la pantalla completa con el.
+            if (_reconnect != Reconnect.None)
             {
-                _reconnectFullScreen = false;
+                var toFullScreen = _reconnect == Reconnect.FullScreenAllMonitors;
+                _reconnect = Reconnect.None;
                 _host.Dispatcher.BeginInvoke(() =>
                 {
                     try
                     {
-                        var bounds = FullScreenBounds();
-                        _rdp.DesktopWidth = bounds.Width;
-                        _rdp.DesktopHeight = bounds.Height;
-                        _rdp.FullScreen = true;
+                        if (_rdp.GetOcx() is MSTSCLib.IMsRdpClientNonScriptable5 ns)
+                            ns.UseMultimon = toFullScreen;
+                        var (w, h) = toFullScreen ? (FullScreenBounds().Width, FullScreenBounds().Height)
+                            : _connection.RdpWidth > 0 && _connection.RdpHeight > 0 ? (_connection.RdpWidth, _connection.RdpHeight) : PixelSize();
+                        _rdp.DesktopWidth = w;
+                        _rdp.DesktopHeight = h;
+                        _rdp.FullScreen = toFullScreen;
+                        _multiMonitorSession = toFullScreen;
                         _rdp.Connect();
                     }
                     catch (Exception ex)
@@ -64,11 +70,20 @@ public sealed class RdpSession : ISession
         // Los otros dos botones de esa barra tampoco hacen nada solos: cerrar pregunta al programa
         // si puede (y entonces el control desconecta, y OnDisconnected cierra la pestaña), y
         // minimizar pide al contenedor que se minimice.
-        _rdp.OnConfirmClose += (_, e) => e.pfAllowClose = true;
+        _rdp.OnConfirmClose += (_, e) => { _closing = true; e.pfAllowClose = true; };
         _rdp.OnRequestContainerMinimize += (_, _) => MinimizeRequested?.Invoke();
         _rdp.OnLeaveFullScreenMode += (_, _) =>
         {
             LeftFullScreen?.Invoke();
+            // De vuelta de todos los monitores: se reconecta en la pestaña con uno solo (UseMultimon
+            // no se puede cambiar en caliente y el control se iria solo a pantalla completa).
+            if (_multiMonitorSession && _connected && !_closing)
+            {
+                _multiMonitorSession = false;
+                _reconnect = Reconnect.Tab;
+                try { _rdp.Disconnect(); } catch (Exception) { }
+                return;
+            }
             // De vuelta a la pestaña: el escritorio se habia puesto a la resolucion de la pantalla
             // y hay que devolverlo al tamaño de la pestaña, si no se queda grande y con barras.
             _resize.Stop();
@@ -91,14 +106,6 @@ public sealed class RdpSession : ISession
         _rdp.OnConnected += (_, _) =>
         {
             _connected = true;
-            // Si ha entrado con mas de un monitor remoto (pantalla completa + todos los monitores).
-            _multiMonitorSession = false;
-            try
-            {
-                if (_rdp.GetOcx() is MSTSCLib.IMsRdpClientNonScriptable5 ns && ns.RemoteMonitorCount > 1)
-                    _multiMonitorSession = true;
-            }
-            catch (Exception) { }
             // El zoom guardado de otras sesiones (escala del escritorio) se pide nada mas entrar:
             // el servidor no lo recuerda, y sin esto se abriria siempre al 100 %.
             if (_connection.RdpScalePercent != 100)
@@ -109,8 +116,10 @@ public sealed class RdpSession : ISession
 
     private readonly System.Windows.Threading.DispatcherTimer _resize;
     private bool _connected;
-    private bool _reconnectFullScreen;
+    private enum Reconnect { None, FullScreenAllMonitors, Tab }
+    private Reconnect _reconnect;
     private bool _multiMonitorSession;
+    private bool _closing;
 
     /// <summary>Tamaño del control en pixeles fisicos (el DPI de la pantalla ya aplicado).</summary>
     private (int Width, int Height) PixelSize()
@@ -128,26 +137,8 @@ public sealed class RdpSession : ISession
     {
         if (!_connected || _rdp.FullScreen)
             return;
-        // Vuelta de todos los monitores a la pestaña: un solo monitor, del tamaño de la pestaña
-        // (o el fijo elegido), aunque no se use «ajustar a la pestaña».
-        if (_multiMonitorSession)
-        {
-            _multiMonitorSession = false;
-            if (!_connection.RdpSmartSizing && _connection.RdpWidth > 0)
-            {
-                try
-                {
-                    if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 fixedClient)
-                        fixedClient.UpdateSessionDisplaySettings((uint)_connection.RdpWidth, (uint)_connection.RdpHeight, (uint)_connection.RdpWidth, (uint)_connection.RdpHeight, 0, (uint)_connection.RdpScalePercent, 100);
-                }
-                catch (Exception) { }
-                return;
-            }
-        }
-        else if (!_connection.RdpSmartSizing || _connection.RdpWidth > 0)
-        {
+        if (!_connection.RdpSmartSizing || _connection.RdpWidth > 0)
             return;
-        }
         var (w, h) = PixelSize();
         try
         {
@@ -246,7 +237,9 @@ public sealed class RdpSession : ISession
         {
             nonScriptable.RedirectDynamicDrives = c.RdpDrives;     // tambien los USB que se enchufen durante la sesion
             nonScriptable.RedirectDynamicDevices = c.RdpDevices;
-            nonScriptable.UseMultimon = c.RdpMultiMonitor;
+            // Todos los monitores NO se pide aqui: con UseMultimon el control se va solo a pantalla
+            // completa al conectar. Se pide al reconectar desde el boton de pantalla completa.
+            nonScriptable.UseMultimon = false;
             nonScriptable.WarnAboutClipboardRedirection = false;
             nonScriptable.WarnAboutPrinterRedirection = false;
             nonScriptable.WarnAboutSendingCredentials = false;
@@ -347,7 +340,7 @@ public sealed class RdpSession : ISession
                 }
                 if (_connected)
                 {
-                    _reconnectFullScreen = true;
+                    _reconnect = Reconnect.FullScreenAllMonitors;
                     _rdp.Disconnect();
                     return;
                 }
@@ -367,6 +360,8 @@ public sealed class RdpSession : ISession
 
     public void Disconnect()
     {
+        _closing = true;
+        _reconnect = Reconnect.None;
         try
         {
             if (_rdp.Connected != 0)

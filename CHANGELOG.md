@@ -1,5 +1,12 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.17.6 — Las conexiones ya no se van solas a pantalla completa
+
+- Con «Usar todos los monitores» marcado, la conexión se iba **sola** a pantalla completa nada más
+  conectar: es lo que hace el control de mstsc cuando se le pide multimonitor antes de conectar.
+  Ahora la conexión inicial entra siempre en la pestaña (un monitor); al pulsar pantalla completa
+  se reconecta con todos los monitores, y al volver a la pestaña se reconecta con uno solo.
+
 ## 2026.9.17.5 — Todos los monitores de verdad; cerrar y minimizar desde la barra
 
 - **Usar todos los monitores**: el control de mstsc reparte los monitores al conectar, no después;
