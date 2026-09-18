@@ -34,8 +34,9 @@ public sealed class FileSession : ISession
         var local = new LocalSide(_connection.LocalPath);
         _browser.PaneFontSize = Math.Clamp(_connection.FontSize, 9, 28);
         _browser.Attach(local, remote, _connection.Host, _connection, open);
-        if (_connection.RemotePath.Length > 0)
-            await _browser.RemotePaneNavigateAsync(_connection.RemotePath);
+        // La carpeta de la conexion o, si no tiene, la raiz del servidor: es donde uno espera
+        // empezar, no el directorio de inicio del usuario.
+        await _browser.RemotePaneNavigateAsync(_connection.RemotePath.Length > 0 ? _connection.RemotePath : "/");
         TitleChanged?.Invoke(_connection.Kind == ConnectionKind.Ftp ? (_connection.FtpsMode > 0 ? "FTPS" : "FTP") : (_connection.UseScp ? "SCP" : "SFTP"));
     }
 

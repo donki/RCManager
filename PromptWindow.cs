@@ -17,7 +17,7 @@ public sealed class PromptWindow : Window
     private readonly Controls.RevealPasswordBox? _password;
     private readonly CheckBox? _check;
 
-    private PromptWindow(Window owner, string title, string message, string? initial, bool password, bool confirm, string? checkText = null)
+    private PromptWindow(Window owner, string title, string message, string? initial, bool password, bool confirm, string? checkText = null, bool alert = false)
     {
         Owner = owner;
         Title = title;
@@ -40,7 +40,7 @@ public sealed class PromptWindow : Window
             Foreground = (System.Windows.Media.Brush)FindResource("TextPrimary"),
         });
 
-        if (!confirm)
+        if (!confirm && !alert)
         {
             if (password)
             {
@@ -65,11 +65,13 @@ public sealed class PromptWindow : Window
         {
             Style = (Style)FindResource(confirm ? "DangerIconButton" : "IconButton"),
             Content = confirm ? "" : "",
-            ToolTip = confirm ? Loc.Get("Delete") : Loc.Get("Save"),
+            ToolTip = confirm ? Loc.Get("Delete") : alert ? Loc.Get("Ok") : Loc.Get("Save"),
             IsDefault = true,
+            IsCancel = alert,
         };
         ok.Click += (_, _) => DialogResult = true;
-        buttons.Children.Add(cancel);
+        if (!alert)
+            buttons.Children.Add(cancel);
         buttons.Children.Add(ok);
 
         var root = new StackPanel { Margin = new Thickness(16) };
@@ -105,6 +107,10 @@ public sealed class PromptWindow : Window
         var w = new PromptWindow(owner, title, message, null, password: true, confirm: false, checkText: saveText);
         return w.ShowDialog() == true ? (w._password!.Password, w._check!.IsChecked == true) : null;
     }
+
+    /// <summary>Un aviso: solo enterarse y aceptar.</summary>
+    public static void Alert(Window owner, string title, string message) =>
+        new PromptWindow(owner, title, message, null, password: false, confirm: false, alert: true).ShowDialog();
 
     public static bool Confirm(Window owner, string title, string message) =>
         new PromptWindow(owner, title, message, null, password: false, confirm: true).ShowDialog() == true;

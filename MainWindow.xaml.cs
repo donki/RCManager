@@ -776,8 +776,12 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            SetStatus(Loc.Format("ConnectFailed", connection.Name, ex.Message));
+            // En la barra de estado se pasa por alto: un aviso con la razon en cristiano
+            // (nombre que no resuelve, puerto cerrado, sin respuesta, credenciales, TLS…).
+            var reason = ConnectionErrors.Describe(ex, connection);
+            SetStatus(Loc.Format("ConnectFailed", connection.Name, reason));
             CloseTab(tab);
+            PromptWindow.Alert(this, Loc.Get("ConnectFailedTitle"), Loc.Format("ConnectFailedText", connection.Name, connection.Host, connection.Port, reason));
         }
     }
 

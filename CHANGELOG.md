@@ -1,5 +1,14 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.18.0 — Avisos claros cuando no se puede conectar; carpeta raíz por defecto
+
+- Cuando una conexión SSH, SFTP/SCP o FTP/FTPS no entra, sale un **aviso con la razón** en vez de
+  una línea en la barra de estado que se pasa por alto: nombre que no resuelve, puerto cerrado,
+  sin respuesta a tiempo (apagado o cortafuegos), sin ruta, credenciales rechazadas, TLS que no
+  negocia o que el servidor no ofrece, o lo que haya respondido el servidor.
+- Las conexiones de ficheros sin carpeta remota configurada empiezan en `/` (la raíz del servidor)
+  en vez de en el directorio de inicio del usuario.
+
 ## 2026.9.17.6 — Las conexiones ya no se van solas a pantalla completa
 
 - Con «Usar todos los monitores» marcado, la conexión se iba **sola** a pantalla completa nada más
