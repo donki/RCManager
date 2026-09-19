@@ -1,5 +1,7 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
 using SocRcManager.Files;
+using SocRcManager.Localization;
 using SocRcManager.Models;
 
 namespace SocRcManager.Sessions;
@@ -9,11 +11,29 @@ public sealed class FileSession : ISession
 {
     private readonly Connection _connection;
     private readonly FileBrowserControl _browser = new();
+    private readonly ContentControl _host = new();
 
     public FileSession(Connection connection)
     {
         _connection = connection;
-        View = _browser;
+        // Hasta que la conexion entra no hay explorador que enseñar: un indicador con el nombre
+        // del servidor en su sitio. Si falla, la pestaña se cierra y sale el aviso con la razon.
+        _host.Content = ConnectingPanel();
+        View = _host;
+    }
+
+    private UIElement ConnectingPanel()
+    {
+        var panel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Width = 320 };
+        panel.Children.Add(new ProgressBar { IsIndeterminate = true, Height = 4, Margin = new Thickness(0, 0, 0, 12) });
+        panel.Children.Add(new TextBlock
+        {
+            Text = Loc.Format("Connecting", _connection.Host),
+            Style = (Style)Application.Current.FindResource("HintText"),
+            TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+        });
+        return panel;
     }
 
     public FrameworkElement View { get; }
@@ -34,6 +54,8 @@ public sealed class FileSession : ISession
         var local = new LocalSide(_connection.LocalPath);
         _browser.PaneFontSize = Math.Clamp(_connection.FontSize, 9, 28);
         _browser.Attach(local, remote, _connection.Host, _connection, open);
+        // Ya conectado: el explorador ocupa el sitio del indicador.
+        _host.Content = _browser;
         // La carpeta de la conexion o, si no tiene, la raiz del servidor: es donde uno espera
         // empezar, no el directorio de inicio del usuario.
         await _browser.RemotePaneNavigateAsync(_connection.RemotePath.Length > 0 ? _connection.RemotePath : "/");

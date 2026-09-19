@@ -1,5 +1,11 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.19.0 — La pestaña de ficheros espera a conectar
+
+- Las conexiones SFTP/SCP y FTP/FTPS ya no abren el explorador vacío antes de conectar: la pestaña
+  enseña un indicador («Conectando con servidor…») hasta que la conexión entra, y entonces aparece
+  el explorador de dos paneles. Si falla, la pestaña se cierra y sale el aviso con la razón.
+
 ## 2026.9.18.0 — Avisos claros cuando no se puede conectar; carpeta raíz por defecto
 
 - Cuando una conexión SSH, SFTP/SCP o FTP/FTPS no entra, sale un **aviso con la razón** en vez de
