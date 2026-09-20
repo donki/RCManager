@@ -1,5 +1,16 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.20.0 — Importar ficheros .rdp y las conexiones de ficheros de RDM
+
+- **Importar .rdp** (Ajustes › Importar conexiones): los ficheros del cliente de Escritorio remoto
+  de Windows, varios de golpe; cada uno es una conexión con el nombre del fichero y sus opciones
+  de mstsc (pantalla, multimonitor, color, audio, teclado, recursos, rendimiento, certificado,
+  sesión de administración y puerta de enlace). La contraseña no (va cifrada para el usuario que
+  la guardó): se pide al conectar.
+- **Importar de Remote Desktop Manager**: además de RDP y SSH, ahora entran las conexiones de
+  ficheros (FTP, FTPS, SFTP y SCP) con su servidor, puerto, usuario, clave privada y carpeta
+  remota.
+
 ## 2026.9.19.0 — La pestaña de ficheros espera a conectar
 
 - Las conexiones SFTP/SCP y FTP/FTPS ya no abren el explorador vacío antes de conectar: la pestaña

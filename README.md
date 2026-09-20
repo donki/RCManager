@@ -48,8 +48,9 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   fija el tamaño de la ventana (para capturas).
 - Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
   (cifrada con DPAPI para el usuario de Windows).
-- **Importar desde Remote Desktop Manager**: en Ajustes ⚙; lee un `.rdm` exportado
-  y conserva sus carpetas. Las contraseñas de RDM no se importan (van cifradas con su clave).
+- **Importar conexiones**: en Ajustes ⚙; de un `.rdm` exportado de Remote Desktop Manager (RDP,
+  SSH, FTP/FTPS, SFTP/SCP, conservando sus carpetas) o de ficheros `.rdp` del cliente de Escritorio
+  remoto (varios de golpe, cada uno con sus opciones de mstsc). Las contraseñas no se importan.
 - **Dónde se guardan** (Ajustes ⚙): en este PC, o en Google Drive / OneDrive entrando con tu cuenta.
   En la nube el fichero va a la carpeta privada de la aplicación (ámbitos `drive.appdata` /
   `Files.ReadWrite.AppFolder`: sin acceso al resto de tus ficheros) y **cifrado con una frase que
@@ -98,5 +99,3 @@ dentro (se pide confirmación y queda el `.bak`).
 
 - Probar RDP contra un servidor real (el control de Windows no deja conectar con el propio equipo,
   y en la red de desarrollo no había otro).
-- Importar desde `.rdp` y desde otros gestores (RDM ya está; las conexiones FTP/SFTP de RDM no se
-  importan todavía).

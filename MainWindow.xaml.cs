@@ -559,18 +559,42 @@ public partial class MainWindow : Window
     /// Importa un .rdm de Remote Desktop Manager. Las conexiones que ya existan (mismo nombre,
     /// servidor y carpeta) no se repiten; las carpetas se crean aunque esten vacias.
     /// </summary>
-    /// <summary>Importar un .rdm (lo pide Ajustes: el boton salio de la barra del arbol el 2026-09-16).</summary>
+    /// <summary>Importar .rdm o .rdp (lo pide Ajustes: el boton salio de la barra del arbol el 2026-09-16).</summary>
     public void ImportRdm() => OnImportClick(this, new RoutedEventArgs());
 
     private void OnImportClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Remote Desktop Manager (*.rdm)|*.rdm|*.*|*.*", CheckFileExists = true };
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Remote Desktop Manager, Escritorio remoto (*.rdm;*.rdp)|*.rdm;*.rdp|Remote Desktop Manager (*.rdm)|*.rdm|Escritorio remoto (*.rdp)|*.rdp|*.*|*.*",
+            CheckFileExists = true,
+            Multiselect = true,
+        };
         if (dialog.ShowDialog(this) != true)
             return;
 
         try
         {
-            var result = RdmImport.Read(dialog.FileName);
+            // Varios .rdp de golpe (uno por conexion) o un .rdm entero: todo a la misma lista.
+            var connections = new List<Connection>();
+            var folders = new List<string>();
+            var skipped = 0;
+            foreach (var file in dialog.FileNames)
+            {
+                if (file.EndsWith(".rdp", StringComparison.OrdinalIgnoreCase))
+                {
+                    var rdp = RdpFileImport.Read(file);
+                    if (rdp.Host.Length > 0) connections.Add(rdp); else skipped++;
+                }
+                else
+                {
+                    var r = RdmImport.Read(file);
+                    connections.AddRange(r.Connections);
+                    folders.AddRange(r.Folders);
+                    skipped += r.Skipped;
+                }
+            }
+            var result = new RdmImport.Result(connections, folders, skipped);
             var added = 0;
             foreach (var c in result.Connections)
             {

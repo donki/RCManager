@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Xml.Linq;
 using SocRcManager.Models;
 
@@ -15,7 +15,8 @@ namespace SocRcManager.Services;
 ///
 /// <para><b>Las contraseñas no se importan.</b> RDM las guarda cifradas con su propia clave
 /// (<c>SafePassword</c>) y no hay forma honrada de leerlas; se piden al conectar y, si se quiere,
-/// se guardan desde la ficha. Lo que no es RDP ni SSH se cuenta y se deja fuera.</para>
+/// se guardan desde la ficha. Las entradas de ficheros de RDM (FTP nativo, FTPS, SFTP, SCP) pasan a
+/// conexiones de ficheros; lo que no es nada de eso se cuenta y se deja fuera.</para>
 /// </remarks>
 public static class RdmImport
 {
@@ -77,6 +78,46 @@ public static class RdmImport
                         Port = port,
                         UserName = ((string?)term?.Element("Username") ?? string.Empty).Trim(),
                         PrivateKeyPath = ((string?)term?.Element("PrivateKeyFileName") ?? string.Empty).Trim(),
+                        Notes = ((string?)e.Element("Description") ?? string.Empty).Trim(),
+                    });
+                    break;
+                }
+
+                case "Ftp":
+                case "FTP":
+                case "FtpNative":
+                case "FTPNative":
+                case "Ftps":
+                case "FTPS":
+                case "Sftp":
+                case "SFTP":
+                case "Scp":
+                case "SCP":
+                {
+                    // RDM guarda los datos de ficheros en un elemento con el nombre del tipo (Ftp, Sftp…)
+                    // o en <Ftp>; se buscan los campos en el primero que los tenga.
+                    var box = new[] { e.Element(type), e.Element("Ftp"), e.Element("FtpNative"), e.Element("Sftp"), e.Element("SFTP") }.FirstOrDefault(x => x is not null) ?? e;
+                    string Pick(params string[] names) => names.Select(n => ((string?)box.Element(n) ?? (string?)e.Element(n) ?? string.Empty).Trim()).FirstOrDefault(v => v.Length > 0) ?? string.Empty;
+                    var protocol = Pick("Protocol", "FtpType", "Type", "ConnectionMode").ToUpperInvariant();
+                    var isSsh = type.StartsWith("S", StringComparison.OrdinalIgnoreCase) || protocol.Contains("SFTP") || protocol.Contains("SCP");
+                    var ftps = type.Equals("Ftps", StringComparison.OrdinalIgnoreCase) || protocol.Contains("FTPS") || protocol.Contains("SSL") || protocol.Contains("TLS");
+                    var (host, port) = HostPort(Pick("Host", "HostName", "Url"), isSsh ? 22 : (ftps && protocol.Contains("IMPLICIT") ? 990 : 21));
+                    if (int.TryParse(Pick("Port", "HostPort"), out var fp) && fp > 0)
+                        port = fp;
+                    connections.Add(new Connection
+                    {
+                        Name = name.Length > 0 ? name : host,
+                        Kind = isSsh ? ConnectionKind.Sftp : ConnectionKind.Ftp,
+                        Folder = folder,
+                        Host = host,
+                        Port = port,
+                        UserName = Pick("Username", "UserName", "User"),
+                        PrivateKeyPath = isSsh ? Pick("PrivateKeyFileName", "PrivateKeyPath") : string.Empty,
+                        UseScp = isSsh && (type.Equals("Scp", StringComparison.OrdinalIgnoreCase) || protocol.Contains("SCP")),
+                        // 0 = FTP sin cifrar, 1 = FTPS explicito, 2 = FTPS implicito (ver Connection.FtpsMode).
+                        FtpsMode = !isSsh && ftps ? (protocol.Contains("IMPLICIT") || port == 990 ? 2 : 1) : 0,
+                        RemotePath = Pick("RemotePath", "InitialRemoteDirectory", "RemoteDirectory", "DefaultRemotePath") is { Length: > 0 } rp ? rp : "/",
+                        LocalPath = Pick("LocalPath", "InitialLocalDirectory", "LocalDirectory"),
                         Notes = ((string?)e.Element("Description") ?? string.Empty).Trim(),
                     });
                     break;
