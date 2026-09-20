@@ -6,7 +6,7 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
 ## Dónde conseguirla
 
 - **Releases de GitHub** (EXE autocontenido de cada versión): https://github.com/donki/RCManager/releases
-- **Microsoft Store:** pendiente de reservar el nombre en Partner Center.
+- **Microsoft Store:** «sOC Remote Connections Manager», enviada el 2026-09-19 (enlace en cuanto Partner Center la publique).
 
 ## Qué hace
 
@@ -100,4 +100,3 @@ dentro (se pide confirmación y queda el `.bak`).
   y en la red de desarrollo no había otro).
 - Importar desde `.rdp` y desde otros gestores (RDM ya está; las conexiones FTP/SFTP de RDM no se
   importan todavía).
-- Publicar en la Microsoft Store: el MSIX (`tools\empaquetar-msix.ps1`) y la ficha (`store\microsoft\`) están; falta reservar el nombre en Partner Center y enviarlo.
