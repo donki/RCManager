@@ -1,5 +1,15 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.23.1 — Arreglo: al abrir una sesión RDP se recupera el zoom que tenía
+
+- **El zoom del escritorio remoto volvía al 100 %.** Se guardaba bien, pero se le pedía al servidor
+  **en cuanto conectaba**, antes de que hubiera sesión iniciada: en ese momento el servidor rechaza
+  el cambio de escala sin decir nada, así que la sesión se abría al 100 %. Ahora se pide **después
+  de entrar** (`OnLoginComplete`, y también al reconectar solo) y, si el servidor aún no lo acepta,
+  se reintenta cada segundo hasta nueve veces. Lo mismo al cambiar el zoom a mano.
+- Si la pestaña todavía no tiene tamaño, ya no se manda una medida inválida: se espera al
+  siguiente intento.
+
 ## 2026.9.23.0 — Al minimizar, al área de notificación
 
 - **Minimizar esconde la ventana y deja el icono junto al reloj** (donde están los iconos ocultos de

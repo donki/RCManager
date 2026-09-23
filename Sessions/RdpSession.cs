@@ -95,6 +95,13 @@ public sealed class RdpSession : ISession
         // se ve nitido en vez de escalado. Con retardo, para no pedirlo veinte veces por arrastre.
         _resize = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _resize.Tick += (_, _) => { _resize.Stop(); ApplyDisplaySize(); };
+        // Reintentos de la escala tras entrar: un segundo entre uno y otro, y nueve como mucho.
+        _scaleRetry = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _scaleRetry.Tick += (_, _) =>
+        {
+            if (++_scaleTries > 9 || ApplyScale())
+                _scaleRetry.Stop();
+        };
         _host.SizeChanged += (_, _) =>
         {
             if (_connected && !_rdp.FullScreen)
@@ -103,18 +110,20 @@ public sealed class RdpSession : ISession
                 _resize.Start();
             }
         };
-        _rdp.OnConnected += (_, _) =>
-        {
-            _connected = true;
-            // El zoom guardado de otras sesiones (escala del escritorio) se pide nada mas entrar:
-            // el servidor no lo recuerda, y sin esto se abriria siempre al 100 %.
-            if (_connection.RdpScalePercent != 100)
-                _host.Dispatcher.BeginInvoke(ApplyScale, System.Windows.Threading.DispatcherPriority.Background);
-        };
-        _rdp.OnDisconnected += (_, _) => { _connected = false; };
+        _rdp.OnConnected += (_, _) => _connected = true;
+        // El zoom guardado (escala del escritorio) se le pide al servidor al entrar: el no lo
+        // recuerda y, sin esto, la sesion se abre siempre al 100 %. Se pide **despues del inicio de
+        // sesion**, no al conectar: mientras no hay sesion iniciada el servidor rechaza el cambio de
+        // escala en silencio, que es lo que hacia que no se restaurase. Y aun asi tarda un poco en
+        // aceptarlo, de ahi los reintentos.
+        _rdp.OnLoginComplete += (_, _) => StartScaleRetries();
+        _rdp.OnAutoReconnected += (_, _) => StartScaleRetries();
+        _rdp.OnDisconnected += (_, _) => { _connected = false; _scaleRetry.Stop(); };
     }
 
     private readonly System.Windows.Threading.DispatcherTimer _resize;
+    private readonly System.Windows.Threading.DispatcherTimer _scaleRetry;
+    private int _scaleTries;
     private bool _connected;
     private enum Reconnect { None, FullScreenAllMonitors, Tab }
     private Reconnect _reconnect;
@@ -162,22 +171,44 @@ public sealed class RdpSession : ISession
     /// <summary>Con todos los monitores en pantalla completa el control lleva la geometria: no se le pisa.</summary>
     private bool MultiMonitorNow => _connection.RdpMultiMonitor && _rdp.FullScreen;
 
-    /// <summary>Pide al servidor el escritorio con el tamaño que tiene y la escala guardada.</summary>
-    private void ApplyScale()
+    /// <summary>
+    /// Empieza a pedir la escala guardada. Justo despues de entrar el servidor todavia puede decir
+    /// que no, asi que se reintenta unas cuantas veces hasta que la acepta (o se deja estar).
+    /// </summary>
+    private void StartScaleRetries()
+    {
+        if (_connection.RdpScalePercent == 100)
+            return;
+        _scaleTries = 0;
+        _scaleRetry.Stop();
+        if (ApplyScale())
+            return;
+        _scaleRetry.Start();
+    }
+
+    /// <summary>
+    /// Pide al servidor el escritorio con el tamaño que tiene y la escala guardada. Devuelve false
+    /// si no se ha podido (el servidor no admite resolucion dinamica, o aun no esta listo).
+    /// </summary>
+    private bool ApplyScale()
     {
         if (!_connected || MultiMonitorNow)
-            return;
+            return false;
         try
         {
             var (w, h) = _rdp.FullScreen
                 ? (System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Width, System.Windows.Forms.Screen.FromControl(_rdp).Bounds.Height)
                 : _connection.RdpWidth > 0 && _connection.RdpHeight > 0 ? (_connection.RdpWidth, _connection.RdpHeight) : PixelSize();
-            if (_rdp.GetOcx() is MSTSCLib.IMsRdpClient9 client9)
-                client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, (uint)_connection.RdpScalePercent, 100);
+            if (w <= 0 || h <= 0)
+                return false;   // la pestaña todavia no tiene tamaño: se reintenta
+            if (_rdp.GetOcx() is not MSTSCLib.IMsRdpClient9 client9)
+                return true;    // control viejo: no hay escala que pedir, no se insiste
+            client9.UpdateSessionDisplaySettings((uint)w, (uint)h, (uint)w, (uint)h, 0, (uint)_connection.RdpScalePercent, 100);
+            return true;
         }
         catch (Exception)
         {
-            // Servidor sin resolucion dinamica: se queda como se conecto.
+            return false;
         }
     }
 
@@ -310,7 +341,12 @@ public sealed class RdpSession : ISession
     {
         var index = Math.Clamp(Array.IndexOf(Scales, _connection.RdpScalePercent) + steps, 0, Scales.Length - 1);
         _connection.RdpScalePercent = Scales[index < 0 ? 0 : index];
-        ApplyScale();
+        // Si el servidor no lo coge a la primera (acaba de entrar, esta ocupado), se insiste igual
+        // que al abrir la sesion.
+        _scaleTries = 0;
+        _scaleRetry.Stop();
+        if (!ApplyScale())
+            _scaleRetry.Start();
         return $"{_connection.RdpScalePercent} %";
     }
 
