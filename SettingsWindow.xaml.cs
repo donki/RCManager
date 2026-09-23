@@ -26,6 +26,7 @@ public partial class SettingsWindow : Window
         SyncButton.ToolTip = Loc.Get("SyncNowTooltip");
         CloseButton.ToolTip = Loc.Get("Close");
         ImportButton.ToolTip = Loc.Get("ImportTooltip");
+        TrayBox.IsChecked = settings.TrayOnMinimize;
         GoogleButton.IsEnabled = CloudSync.IsAvailable(StorageMode.GoogleDrive);
         OneDriveButton.IsEnabled = CloudSync.IsAvailable(StorageMode.OneDrive);
         Paint();
@@ -155,6 +156,13 @@ public partial class SettingsWindow : Window
             main.ImportRdm();
             LocalReplaced = true;
         }
+    }
+
+    /// <summary>Al minimizar: al area de notificacion o a la barra de tareas (lo aplica la ventana principal al volver).</summary>
+    private void OnTrayClick(object sender, RoutedEventArgs e)
+    {
+        _settings.TrayOnMinimize = TrayBox.IsChecked == true;
+        _settings.Save();
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();

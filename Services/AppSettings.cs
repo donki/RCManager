@@ -41,6 +41,12 @@ public sealed class AppSettings
     /// <summary>Letra del editor de texto integrado (Ctrl + y Ctrl -), comun a todas las conexiones.</summary>
     public double EditorFontSize { get; set; } = 13;
 
+    /// <summary>
+    /// Al minimizar, la ventana se esconde y queda el icono en el area de notificacion (junto al
+    /// reloj). Apagado, se minimiza a la barra de tareas como cualquier ventana.
+    /// </summary>
+    public bool TrayOnMinimize { get; set; } = true;
+
     /// <summary>La instancia viva de la ventana principal, para quien no la tiene a mano (el editor).</summary>
     public static AppSettings? Current { get; set; }
 

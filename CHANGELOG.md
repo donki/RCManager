@@ -1,5 +1,13 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.23.0 — Al minimizar, al área de notificación
+
+- **Minimizar esconde la ventana y deja el icono junto al reloj** (donde están los iconos ocultos de
+  Windows 11 si no lo anclas): un clic la trae de vuelta y, con el botón derecho, «Abrir» y «Salir».
+  Así las sesiones abiertas siguen vivas sin ocupar la barra de tareas.
+- Se puede apagar en **Ajustes › Ventana**: entonces minimiza a la barra de tareas como cualquier
+  ventana.
+
 ## 2026.9.20.0 — Importar ficheros .rdp y las conexiones de ficheros de RDM
 
 - **Importar .rdp** (Ajustes › Importar conexiones): los ficheros del cliente de Escritorio remoto

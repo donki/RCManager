@@ -22,6 +22,7 @@ public partial class MainWindow : Window
 {
     private readonly Store _store = new();
     private readonly AppSettings _settings = AppSettings.Current = AppSettings.Load();
+    private TrayIcon? _tray;
     private readonly CloudSync _sync;
     private readonly List<(TabItem Tab, ISession Session, Connection Connection)> _open = [];
 
@@ -61,12 +62,20 @@ public partial class MainWindow : Window
             }
         };
 
+        // Icono en el area de notificacion: al minimizar, la ventana se esconde ahi (Ajustes lo apaga).
+        // Se crea cuando la ventana ya tiene handle; «Salir» del menu cierra de verdad.
+        SourceInitialized += (_, _) =>
+        {
+            _tray = new TrayIcon(this, Loc.Get, Close) { MinimizeToTray = _settings.TrayOnMinimize };
+        };
+
         Closing += (_, _) =>
         {
             foreach (var (_, session, _) in _open.ToList())
                 session.Disconnect();
             _sync.Dispose();
             SaveTreeState();
+            _tray?.Dispose();
         };
     }
 
@@ -1054,6 +1063,9 @@ public partial class MainWindow : Window
     {
         var dialog = new SettingsWindow(_settings, _sync) { Owner = this };
         dialog.ShowDialog();
+        // El interruptor de la bandeja se puede haber cambiado ahi.
+        if (_tray is not null)
+            _tray.MinimizeToTray = _settings.TrayOnMinimize;
         if (dialog.LocalReplaced)
             BuildTree();
     }
