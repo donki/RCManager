@@ -6,7 +6,7 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
 ## Dónde conseguirla
 
 - **Releases de GitHub** (EXE autocontenido de cada versión): https://github.com/donki/RCManager/releases
-- **Microsoft Store:** «sOC Remote Connections Manager», enviada el 2026-09-19 (enlace en cuanto Partner Center la publique).
+- **Microsoft Store:** https://apps.microsoft.com/detail/9MXKDZMLCS99
 
 ## Qué hace
 
