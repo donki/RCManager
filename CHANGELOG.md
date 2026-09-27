@@ -1,5 +1,12 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.27.0 — Un error inesperado ya no cierra la aplicación
+
+- Si algo falla sin que se esperase, **la aplicación sigue abierta y las sesiones siguen
+  conectadas**: sale un aviso en castellano o en inglés y el detalle técnico queda en
+  `%LOCALAPPDATA%\sOCRCManager\errors.log` para poder avisar del fallo. Antes, un error así podía
+  cerrar la ventana con todas las pestañas.
+
 ## 2026.9.23.1 — Arreglo: al abrir una sesión RDP se recupera el zoom que tenía
 
 - **El zoom del escritorio remoto volvía al 100 %.** Se guardaba bien, pero se le pedía al servidor

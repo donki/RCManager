@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using SocRcManager.Localization;
 using SocRcManager.Services;
 
 namespace SocRcManager;
@@ -8,6 +9,24 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Un error que no se esperaba no puede cerrar la aplicacion (constitucion general, 6.12):
+        // se apunta en el registro con la traza y se avisa en el idioma del usuario. Las sesiones
+        // abiertas siguen vivas.
+        DispatcherUnhandledException += (_, ex) =>
+        {
+            AppLog.Write($"error no controlado: {ex.Exception}");
+            ex.Handled = true;
+            ShowUnexpectedError();
+        };
+        TaskScheduler.UnobservedTaskException += (_, ex) =>
+        {
+            AppLog.Write($"error no controlado en tarea: {ex.Exception}");
+            ex.SetObserved();
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
+            AppLog.Write($"error fatal: {ex.ExceptionObject}");
+
         ThemeManager.Apply();
         // sOCRCManager.exe --open "Nombre de la conexion" [--open "Otra"]: abre esas sesiones al
         // arrancar (accesos directos a un servidor concreto).
@@ -44,5 +63,30 @@ public partial class App : Application
             window.OpenFileInEditor(editFileConnection, editFilePath);
         if (edit is not null)
             window.Dispatcher.BeginInvoke(() => window.EditByName(edit, editTab), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    private bool _showingError;
+
+    /// <summary>
+    /// Aviso de un error inesperado. Uno cada vez: si el mismo fallo se repite mientras el aviso
+    /// esta abierto (un temporizador, un redibujado), no se apilan ventanas.
+    /// </summary>
+    private void ShowUnexpectedError()
+    {
+        if (_showingError) return;
+        _showingError = true;
+        try
+        {
+            var owner = MainWindow is { IsVisible: true } w ? w : null;
+            PromptWindow.Alert(owner!, Loc.Get("UnexpectedErrorTitle"), Loc.Format("UnexpectedErrorText", AppLog.FilePath));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"no se pudo enseñar el aviso de error: {ex}");
+        }
+        finally
+        {
+            _showingError = false;
+        }
     }
 }
