@@ -2,9 +2,12 @@
 
 Todo lo de aquí es para pegar tal cual en el formulario de Partner Center.
 
-Antes de enviar: **reservar el nombre** «sOC Remote Connections Manager» en Partner Center y
-comprobar que la identidad del paquete (`tools\empaquetar-msix.ps1`, parámetro `-IdentityName`)
-coincide con la que asigne *Product management › Product identity*.
+**Publicada en la Microsoft Store** (Josep, 2026-09-29: «En Microsoft Store», 240 mercados, gratis):
+https://apps.microsoft.com/detail/9MXKDZMLCS99 · id. de Store `9MXKDZMLCS99`. Para cada versión nueva basta con
+subir el MSIX (con versión mayor que la publicada) y pegar aquí lo que cambie de la ficha.
+
+La identidad del paquete (`tools\empaquetar-msix.ps1`, parámetro `-IdentityName`)
+es la de *Product management › Product identity*.
 
 ---
 
