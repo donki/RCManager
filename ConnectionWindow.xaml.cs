@@ -194,7 +194,7 @@ public partial class ConnectionWindow : Window
 
     private void OnBrowseClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "OpenSSH / PEM|*;*.pem;*.key;*.ppk|*.*|*.*", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Filter = "SSH / PEM|*;*.pem;*.key;*.ppk|*.*|*.*", CheckFileExists = true };
         if (dialog.ShowDialog(this) == true)
             KeyBox.Text = dialog.FileName;
     }

@@ -565,7 +565,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Importa un .rdm de Remote Desktop Manager. Las conexiones que ya existan (mismo nombre,
+    /// Importa un .rdm exportado por otro gestor de conexiones. Las conexiones que ya existan (mismo nombre,
     /// servidor y carpeta) no se repiten; las carpetas se crean aunque esten vacias.
     /// </summary>
     /// <summary>Importar .rdm o .rdp (lo pide Ajustes: el boton salio de la barra del arbol el 2026-09-16).</summary>
@@ -575,7 +575,7 @@ public partial class MainWindow : Window
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "Remote Desktop Manager, Escritorio remoto (*.rdm;*.rdp)|*.rdm;*.rdp|Remote Desktop Manager (*.rdm)|*.rdm|Escritorio remoto (*.rdp)|*.rdp|*.*|*.*",
+            Filter = Loc.Get("ImportFilter"),
             CheckFileExists = true,
             Multiselect = true,
         };

@@ -1,5 +1,13 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.29.0 — Textos sin nombres de productos ajenos
+
+- La ayuda del botón de importar, la explicación de Importar y el filtro del diálogo de abrir
+  fichero hablan de **otro gestor de conexiones (ficheros .rdm)** en vez de nombrar un producto
+  concreto. El filtro del diálogo, que solo estaba en castellano, sale ahora también en inglés.
+- La ayuda de la clave privada dice **«Clave privada SSH o PEM»**, y el botón de permisos del
+  explorador, **«en servidores que usan permisos de tipo rwx»**.
+
 ## 2026.9.27.0 — Un error inesperado ya no cierra la aplicación
 
 - Si algo falla sin que se esperase, **la aplicación sigue abierta y las sesiones siguen
