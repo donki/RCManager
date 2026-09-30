@@ -81,7 +81,7 @@ public partial class MainWindow : Window
 
     private void ApplyTexts()
     {
-        Title = Loc.Get("AppTitle");
+        Title = Sandbox.IsOn ? Loc.Get("AppTitle") + " [SOC_SANDBOX]" : Loc.Get("AppTitle");
         NewConnectionButton.ToolTip = Loc.Get("NewConnectionTooltip");
         NewFolderButton.ToolTip = Loc.Get("NewFolderTooltip");
         EditButton.ToolTip = Loc.Get("EditTooltip");
@@ -706,6 +706,13 @@ public partial class MainWindow : Window
 
     private async Task OpenAsync(Connection connection)
     {
+        // Modo aislado de las pruebas: nunca se conecta a un servidor de verdad (general 8.4).
+        if (Sandbox.IsOn)
+        {
+            SetStatus($"SOC_SANDBOX: {connection.Name}");
+            return;
+        }
+
         var password = Secrets.Unprotect(connection.PasswordProtected);
         if (password.Length == 0 && connection.PrivateKeyPath.Length == 0)
         {

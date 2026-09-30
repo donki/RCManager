@@ -32,6 +32,14 @@
     <EmbeddedResource Remove="RCManager.Tests\**" />
   </ItemGroup>
 
+  <!-- Las pruebas de interfaz (FlaUI) viven dentro de la carpeta: no son parte de la aplicacion. -->
+  <ItemGroup>
+    <Compile Remove="RCManager.UITests\**" />
+    <Page Remove="RCManager.UITests\**" />
+    <None Remove="RCManager.UITests\**" />
+    <EmbeddedResource Remove="RCManager.UITests\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />

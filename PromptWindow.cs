@@ -69,6 +69,9 @@ public sealed class PromptWindow : Window
             IsDefault = true,
             IsCancel = alert,
         };
+        // Para las pruebas de interfaz (FlaUI): los botones solo llevan icono.
+        System.Windows.Automation.AutomationProperties.SetAutomationId(cancel, "CancelButton");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(ok, "OkButton");
         ok.Click += (_, _) => DialogResult = true;
         if (!alert)
             buttons.Children.Add(cancel);

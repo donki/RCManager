@@ -65,9 +65,18 @@ public partial class SettingsWindow : Window
         Paint();
     }
 
-    private async void OnGoogleClick(object sender, RoutedEventArgs e) => await SignInAsync(StorageMode.GoogleDrive);
+    private async void OnGoogleClick(object sender, RoutedEventArgs e)
+    {
+        // Modo aislado de las pruebas: sin nube.
+        if (!Sandbox.IsOn)
+            await SignInAsync(StorageMode.GoogleDrive);
+    }
 
-    private async void OnOneDriveClick(object sender, RoutedEventArgs e) => await SignInAsync(StorageMode.OneDrive);
+    private async void OnOneDriveClick(object sender, RoutedEventArgs e)
+    {
+        if (!Sandbox.IsOn)
+            await SignInAsync(StorageMode.OneDrive);
+    }
 
     private async Task SignInAsync(StorageMode mode)
     {

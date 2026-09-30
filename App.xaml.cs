@@ -10,6 +10,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Debug con SOC_SANDBOX: datos en otra carpeta y sin conectar a nada (pruebas de interfaz).
+        Sandbox.Apply();
+
         // Un error que no se esperaba no puede cerrar la aplicacion (constitucion general, 6.12):
         // se apunta en el registro con la traza y se avisa en el idioma del usuario. Las sesiones
         // abiertas siguen vivas.
