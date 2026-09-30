@@ -19,10 +19,11 @@ namespace SocRcManager.Services;
 /// </remarks>
 public sealed class Store
 {
-    private static readonly string Folder = Path.Combine(
+    /// <summary>Carpeta de datos (las pruebas la cambian por una temporal).</summary>
+    internal static string Folder { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sOCRCManager");
 
-    private static readonly string FilePath = Path.Combine(Folder, "connections.json");
+    private static string FilePath => Path.Combine(Folder, "connections.json");
 
     private static readonly JsonSerializerOptions Json = new()
     {

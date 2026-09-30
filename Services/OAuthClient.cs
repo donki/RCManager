@@ -58,6 +58,9 @@ public sealed class OAuthClient
 
     public bool IsConfigured => _provider.ClientId.Length > 0;
 
+    /// <summary>Abre la pagina de entrada en el navegador del sistema (las pruebas la cambian para no abrir nada).</summary>
+    internal static Action<string> OpenBrowser { get; set; } = url => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
     public async Task<OAuthTokens> SignInAsync(CancellationToken cancellationToken = default)
     {
         var verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
@@ -76,7 +79,7 @@ public sealed class OAuthClient
         using var listener = new HttpListener();
         listener.Prefixes.Add(redirect);
         listener.Start();
-        Process.Start(new ProcessStartInfo(authorize) { UseShellExecute = true });
+        OpenBrowser(authorize);
 
         using var registration = cancellationToken.Register(listener.Abort);
         HttpListenerContext context;
@@ -84,9 +87,11 @@ public sealed class OAuthClient
         {
             context = await listener.GetContextAsync().ConfigureAwait(false);
         }
-        catch (HttpListenerException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (cancellationToken.IsCancellationRequested && ex is HttpListenerException or ObjectDisposedException)
         {
-            throw new OperationCanceledException();
+            // Abort() puede acabar la espera con cualquiera de las dos: es una cancelacion (antes el
+            // ObjectDisposedException llegaba tal cual y se enseñaba como un error de la nube).
+            throw new OperationCanceledException(cancellationToken);
         }
 
         var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);

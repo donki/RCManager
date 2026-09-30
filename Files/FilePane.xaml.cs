@@ -13,18 +13,10 @@ public sealed class FileRow(FileEntry entry)
     public FileEntry Entry { get; } = entry;
     public string Name => Entry.Name;
     public string Glyph => Entry.IsDirectory ? "" : "";
-    public string SizeText => Entry.IsDirectory ? string.Empty : Format(Entry.Size);
+    public string SizeText => Entry.IsDirectory ? string.Empty : FileRules.SizeText(Entry.Size);
     public string DateText => Entry.Modified?.ToString("g", CultureInfo.CurrentCulture) ?? string.Empty;
     public string ModeText => Entry.ModeText;
     public string OwnerText => Entry.Owner is null ? string.Empty : Entry.Group is null ? Entry.Owner : $"{Entry.Owner}:{Entry.Group}";
-
-    public static string Format(long bytes) => bytes switch
-    {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
-        < 1024L * 1024 * 1024 => $"{bytes / 1024.0 / 1024:0.#} MB",
-        _ => $"{bytes / 1024.0 / 1024 / 1024:0.##} GB",
-    };
 }
 
 /// <summary>
@@ -106,7 +98,7 @@ public partial class FilePane : UserControl
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
             catch (Exception ex) { PaneStatus.Text = ex.Message.ReplaceLineEndings(" "); }
         }
-        else if (TextEditorWindow.LooksLikeText(entry))
+        else if (FileRules.LooksLikeText(entry))
             EditRequested?.Invoke(entry);
         else
             OpenExternalRequested?.Invoke(entry);
@@ -143,16 +135,6 @@ public partial class FilePane : UserControl
 
     private void OnHiddenClick(object sender, RoutedEventArgs e) => _ = RefreshAsync();
 
-    private static bool IsHidden(FileEntry entry, bool local)
-    {
-        if (entry.Name.StartsWith('.'))
-            return true;
-        if (!local)
-            return false;
-        try { return (File.GetAttributes(entry.FullPath) & (FileAttributes.Hidden | FileAttributes.System)) != 0; }
-        catch (Exception) { return false; }
-    }
-
     private void FitNameColumn() =>
         NameColumn.Width = Math.Max(120, ActualWidth - SizeColumn.Width - DateColumn.Width - ModeColumn.Width - OwnerColumn.Width - 40);
 
@@ -174,12 +156,12 @@ public partial class FilePane : UserControl
             return;
         var entries = SelectedEntries;
         var dialog = new PermissionsWindow(Window.GetWindow(this)!, entries);
-        if (dialog.ShowDialog() != true || (!dialog.ChangeMode && !dialog.ChangeOwner))
+        if (dialog.ShowDialog() != true || dialog.Change is not { } change || (!change.ChangeMode && !change.ChangeOwner))
             return;
         try
         {
             foreach (var entry in entries)
-                await ApplyPermissionsAsync(remote, entry, dialog, CancellationToken.None);
+                await FileRules.ApplyPermissionsAsync(remote, entry, change, CancellationToken.None);
             PaneStatus.Text = Loc.Get("PermsApplied");
         }
         catch (Exception ex)
@@ -187,17 +169,6 @@ public partial class FilePane : UserControl
             PaneStatus.Text = ex.Message.ReplaceLineEndings(" ");
         }
         await RefreshAsync();
-    }
-
-    private static async Task ApplyPermissionsAsync(RemoteSide remote, FileEntry entry, PermissionsWindow dialog, CancellationToken cancellationToken)
-    {
-        if (dialog.ChangeMode && dialog.Mode is { } mode)
-            await remote.Fs.ChangeModeAsync(entry.FullPath, mode, cancellationToken);
-        if (dialog.ChangeOwner)
-            await remote.Fs.ChangeOwnerAsync(entry.FullPath, dialog.OwnerName, dialog.GroupName, cancellationToken);
-        if (dialog.Recursive && entry.IsDirectory)
-            foreach (var child in await remote.ListAsync(entry.FullPath, cancellationToken))
-                await ApplyPermissionsAsync(remote, child, dialog, cancellationToken);
     }
 
     public async Task NavigateAsync(string path)
@@ -212,7 +183,7 @@ public partial class FilePane : UserControl
             if (cts.IsCancellationRequested)
                 return;
             var showHidden = ShowHidden || path.Length == 0;
-            var entries = showHidden ? listed : listed.Where(e => !IsHidden(e, _side.IsLocal)).ToList();
+            var entries = showHidden ? listed : listed.Where(e => !FileRules.IsHidden(e, _side.IsLocal)).ToList();
             CurrentPath = path;
             PathBox.Text = path.Length == 0 ? Loc.Get("FilesThisPc") : path;
             List.ItemsSource = entries
@@ -311,31 +282,13 @@ public partial class FilePane : UserControl
         try
         {
             foreach (var entry in entries)
-                await DeleteRecursiveAsync(_side, entry, CancellationToken.None);
+                await FileRules.DeleteRecursiveAsync(_side, entry, CancellationToken.None);
         }
         catch (Exception ex)
         {
             PaneStatus.Text = ex.Message.ReplaceLineEndings(" ");
         }
         await RefreshAsync();
-    }
-
-    /// <summary>Borra un fichero, o un directorio con todo lo de dentro (los remotos no lo hacen solos).</summary>
-    public static async Task DeleteRecursiveAsync(IFileSide side, FileEntry entry, CancellationToken cancellationToken)
-    {
-        if (!entry.IsDirectory)
-        {
-            await side.DeleteFileAsync(entry.FullPath, cancellationToken);
-            return;
-        }
-        if (side.IsLocal)
-        {
-            await side.DeleteDirectoryAsync(entry.FullPath, cancellationToken);
-            return;
-        }
-        foreach (var child in await side.ListAsync(entry.FullPath, cancellationToken))
-            await DeleteRecursiveAsync(side, child, cancellationToken);
-        await side.DeleteDirectoryAsync(entry.FullPath, cancellationToken);
     }
 
     private void OnPathKeyDown(object sender, KeyEventArgs e)

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cobertura de los ficheros de la aplicacion enlazados en el ensamblado de pruebas: se incluye el
+  propio ensamblado de pruebas (coverlet lo excluye por defecto) y se quitan las pruebas y el
+  codigo de apoyo, que viven en esta carpeta.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <IncludeTestAssembly>true</IncludeTestAssembly>
+          <ExcludeByFile>**/RCManager.Tests/*.cs,**/obj/**</ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -180,7 +180,7 @@ public partial class MainWindow : Window
         var shown = 0;
         foreach (var c in _store.Connections.OrderBy(c => c.Folder, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            if (filter.Length > 0 && !Matches(c, filter))
+            if (filter.Length > 0 && !c.Matches(filter))
                 continue;
 
             var item = new TreeViewItem
@@ -212,13 +212,6 @@ public partial class MainWindow : Window
             foreach (var sub in Flatten(child))
                 yield return sub;
     }
-
-    private static bool Matches(Connection c, string filter) =>
-        c.Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
-        c.Host.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
-        c.UserName.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
-        c.Folder.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
-        c.Notes.Contains(filter, StringComparison.CurrentCultureIgnoreCase);
 
     private FrameworkElement Header(string glyph, string text, string? detail = null)
     {

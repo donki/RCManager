@@ -47,7 +47,7 @@ public static class RdmImport
                 case "RDPConfigured":
                 {
                     var rdp = e.Element("RDP");
-                    var (host, port) = HostPort((string?)e.Element("Url"), 3389);
+                    var (host, port) = HostAddress.Split((string?)e.Element("Url"), 3389);
                     connections.Add(new Connection
                     {
                         Name = name.Length > 0 ? name : host,
@@ -65,7 +65,7 @@ public static class RdmImport
                 case "SSHShell":
                 {
                     var term = e.Element("Terminal");
-                    var (host, port) = HostPort((string?)term?.Element("Host"), 22);
+                    var (host, port) = HostAddress.Split((string?)term?.Element("Host"), 22);
                     var explicitPort = (string?)term?.Element("HostPort");
                     if (int.TryParse(explicitPort, out var p) && p > 0)
                         port = p;
@@ -101,7 +101,7 @@ public static class RdmImport
                     var protocol = Pick("Protocol", "FtpType", "Type", "ConnectionMode").ToUpperInvariant();
                     var isSsh = type.StartsWith("S", StringComparison.OrdinalIgnoreCase) || protocol.Contains("SFTP") || protocol.Contains("SCP");
                     var ftps = type.Equals("Ftps", StringComparison.OrdinalIgnoreCase) || protocol.Contains("FTPS") || protocol.Contains("SSL") || protocol.Contains("TLS");
-                    var (host, port) = HostPort(Pick("Host", "HostName", "Url"), isSsh ? 22 : (ftps && protocol.Contains("IMPLICIT") ? 990 : 21));
+                    var (host, port) = HostAddress.Split(Pick("Host", "HostName", "Url"), isSsh ? 22 : (ftps && protocol.Contains("IMPLICIT") ? 990 : 21));
                     if (int.TryParse(Pick("Port", "HostPort"), out var fp) && fp > 0)
                         port = fp;
                     connections.Add(new Connection
@@ -133,14 +133,5 @@ public static class RdmImport
     }
 
     private static string Folder(string? group) =>
-        string.Join('/', (group ?? string.Empty).Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
-
-    private static (string Host, int Port) HostPort(string? url, int defaultPort)
-    {
-        var text = (url ?? string.Empty).Trim();
-        var colon = text.LastIndexOf(':');
-        if (colon > 0 && int.TryParse(text[(colon + 1)..], out var port) && port > 0)
-            return (text[..colon], port);
-        return (text, defaultPort);
-    }
+        string.Join('/', (group ?? string.Empty).Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 }

@@ -21,13 +21,20 @@ namespace SocRcManager.Services;
 /// </remarks>
 public sealed class CloudSync : IDisposable
 {
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(60) };
+    private readonly HttpClient _http;
     private readonly AppSettings _settings;
     private readonly Store _store;
     private CancellationTokenSource? _pendingUpload;
 
     public CloudSync(AppSettings settings, Store store)
+        : this(settings, store, new HttpClient { Timeout = TimeSpan.FromSeconds(60) })
     {
+    }
+
+    /// <summary>Con el cliente HTTP que se de (las pruebas le ponen uno que no sale a la red).</summary>
+    internal CloudSync(AppSettings settings, Store store, HttpClient http)
+    {
+        _http = http;
         _settings = settings;
         _store = store;
         _store.Saved += OnSaved;

@@ -83,9 +83,21 @@ public sealed class FtpFileSystem : IRemoteFileSystem
         return info is null ? null : new FileEntry(info.Name, info.FullName, info.Type is FtpObjectType.Directory or FtpObjectType.Link, info.Size, info.Modified == DateTime.MinValue ? null : info.Modified);
     });
 
-    /// <summary>MFMT; los servidores que no lo tienen lo rechazan y se ignora.</summary>
+    /// <summary>
+    /// MFMT; los servidores que no lo tienen lo rechazan y se ignora. Con <c>TimeConversion =
+    /// LocalTime</c> FluentFTP espera la hora local y la pasa el mismo a UTC: darle una hora UTC
+    /// hacia que lanzase y la fecha no se conservaba nunca.
+    /// </summary>
     public Task SetModifiedAsync(string path, DateTime modified, CancellationToken cancellationToken) =>
-        UseAsync(async () => { await _ftp.SetModifiedTime(path, modified.ToUniversalTime(), cancellationToken); return true; });
+        UseAsync(async () => { await _ftp.SetModifiedTime(path, AsLocal(modified), cancellationToken); return true; });
+
+    /// <summary>La hora local de una fecha (sin tipo = ya es local).</summary>
+    public static DateTime AsLocal(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value.ToLocalTime(),
+        DateTimeKind.Local => value,
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Local),
+    };
 
     /// <summary>Se sabe que es Unix cuando el listado trae permisos rwx (un IIS no los trae).</summary>
     public bool SupportsPermissions { get; private set; }
@@ -95,22 +107,28 @@ public sealed class FtpFileSystem : IRemoteFileSystem
     private async Task<IReadOnlyList<FileEntry>> ListCoreAsync(string path, CancellationToken cancellationToken)
     {
         var items = await _ftp.GetListing(path, cancellationToken);
-        var list = items
-            .Where(i => i.Name is not ("." or ".."))
-            .Select(i => new FileEntry(i.Name, i.FullName, i.Type is FtpObjectType.Directory or FtpObjectType.Link, i.Size,
-                i.Modified == DateTime.MinValue ? null : i.Modified,
-                i.Chmod > 0 || !string.IsNullOrEmpty(i.RawPermissions) ? Convert.ToInt32(i.Chmod.ToString(), 8) : null,   // 644 -> bits
-                string.IsNullOrEmpty(i.RawOwner) ? null : i.RawOwner,
-                string.IsNullOrEmpty(i.RawGroup) ? null : i.RawGroup))
-            .ToList();
+        var list = ToEntries(items);
         if (list.Any(e => e.Mode is not null))
             SupportsPermissions = true;
         return list;
     }
 
+    /// <summary>
+    /// El listado de FluentFTP a entradas: sin «.» ni «..», los enlaces como directorios, sin fecha
+    /// si el servidor no la da, y permisos/propietario solo si vienen (servidor Unix).
+    /// </summary>
+    public static List<FileEntry> ToEntries(IEnumerable<FtpListItem> items) => items
+        .Where(i => i.Name is not ("." or ".."))
+        .Select(i => new FileEntry(i.Name, i.FullName, i.Type is FtpObjectType.Directory or FtpObjectType.Link, i.Size,
+            i.Modified == DateTime.MinValue ? null : i.Modified,
+            i.Chmod > 0 || !string.IsNullOrEmpty(i.RawPermissions) ? UnixMode.FromFtpChmod(i.Chmod) : null,   // 644 -> bits
+            string.IsNullOrEmpty(i.RawOwner) ? null : i.RawOwner,
+            string.IsNullOrEmpty(i.RawGroup) ? null : i.RawGroup))
+        .ToList();
+
     /// <summary>SITE CHMOD, que entienden casi todos los servidores Unix.</summary>
     public Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken) =>
-        _ftp.Chmod(path, Convert.ToInt32(Convert.ToString(mode, 8)), cancellationToken);
+        _ftp.Chmod(path, UnixMode.ToFtpChmod(mode), cancellationToken);
 
     /// <summary>SITE CHOWN: solo lo admiten algunos servidores (ProFTPD con mod_site_misc, pure-ftpd…); si no, se dice.</summary>
     public async Task ChangeOwnerAsync(string path, string owner, string group, CancellationToken cancellationToken)

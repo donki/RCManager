@@ -8,3 +8,7 @@ obj/
 
 # Identificadores OAuth reales (constitucion, seccion 4)
 oauth.local.props
+
+# Resultados de las pruebas y de la cobertura
+TestResults/
+cobertura/

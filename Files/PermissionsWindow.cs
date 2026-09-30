@@ -24,8 +24,9 @@ public sealed class PermissionsWindow : Window
     public string OwnerName => _owner.Text.Trim();
     public string GroupName => _group.Text.Trim();
     public bool Recursive => _recursive.IsChecked == true;
-    public bool ChangeMode { get; private set; }
-    public bool ChangeOwner { get; private set; }
+
+    /// <summary>Lo que se ha pedido al aceptar (null si se cancelo).</summary>
+    public PermissionChange? Change { get; private set; }
 
     public PermissionsWindow(Window owner, IReadOnlyList<FileEntry> entries)
     {
@@ -113,7 +114,7 @@ public sealed class PermissionsWindow : Window
         _syncing = true;
         if (first.Mode is { } mode)
             SetBits(mode);
-        _octal.Text = first.Mode is { } m ? Convert.ToString(m, 8).PadLeft(3, '0') : string.Empty;
+        _octal.Text = first.Mode is { } m ? UnixMode.ToOctal(m) : string.Empty;
         _owner.Text = first.Owner ?? string.Empty;
         _group.Text = first.Group ?? string.Empty;
         _syncing = false;
@@ -126,8 +127,7 @@ public sealed class PermissionsWindow : Window
         var ok = new Button { Style = (Style)FindResource("IconButton"), Content = "", ToolTip = Loc.Get("PermsApply"), IsDefault = true };
         ok.Click += (_, _) =>
         {
-            ChangeMode = Mode is not null && Mode != originalMode;
-            ChangeOwner = (OwnerName.Length > 0 && OwnerName != originalOwner) || (GroupName.Length > 0 && GroupName != originalGroup);
+            Change = PermissionChange.From(Mode, originalMode, OwnerName, originalOwner, GroupName, originalGroup, Recursive);
             DialogResult = true;
         };
         buttons.Children.Add(cancel);
@@ -142,8 +142,9 @@ public sealed class PermissionsWindow : Window
 
     private void SetBits(int mode)
     {
+        var bits = UnixMode.ToBits(mode);
         for (var i = 0; i < 9; i++)
-            _bits[i].IsChecked = (mode & (1 << (8 - i))) != 0;
+            _bits[i].IsChecked = bits[i];
         Mode = mode;
     }
 
@@ -151,13 +152,10 @@ public sealed class PermissionsWindow : Window
     {
         if (_syncing)
             return;
-        var mode = 0;
-        for (var i = 0; i < 9; i++)
-            if (_bits[i].IsChecked == true)
-                mode |= 1 << (8 - i);
+        var mode = UnixMode.FromBits(_bits.Select(b => b.IsChecked == true).ToArray());
         Mode = mode;
         _syncing = true;
-        _octal.Text = Convert.ToString(mode, 8).PadLeft(3, '0');
+        _octal.Text = UnixMode.ToOctal(mode);
         _syncing = false;
     }
 
@@ -165,11 +163,10 @@ public sealed class PermissionsWindow : Window
     {
         if (_syncing)
             return;
-        var text = _octal.Text.Trim();
-        if (text.Length is >= 3 and <= 4 && text.All(ch => ch is >= '0' and <= '7'))
+        if (UnixMode.ParseOctal(_octal.Text) is { } mode)
         {
             _syncing = true;
-            SetBits(Convert.ToInt32(text[^3..], 8));
+            SetBits(mode);
             _syncing = false;
         }
     }

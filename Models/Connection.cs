@@ -198,4 +198,12 @@ public sealed class Connection
     public string Caption => Port == DefaultPort ? Host : $"{Host}:{Port}";
 
     public Connection Clone() => (Connection)MemberwiseClone();
+
+    /// <summary>La busqueda del arbol: el texto esta en el nombre, el servidor, el usuario, la carpeta o las notas.</summary>
+    public bool Matches(string filter) =>
+        Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
+        Host.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
+        UserName.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
+        Folder.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
+        Notes.Contains(filter, StringComparison.CurrentCultureIgnoreCase);
 }

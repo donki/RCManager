@@ -34,7 +34,7 @@ public static class RdpFileImport
         int I(string key, int fallback) => int.TryParse(S(key), out var v) ? v : fallback;
         bool B(string key, bool fallback) => values.ContainsKey(key) ? I(key, fallback ? 1 : 0) != 0 : fallback;
 
-        var (host, port) = HostPort(S("full address"), I("server port", 3389));
+        var (host, port) = HostAddress.Split(S("full address"), I("server port", 3389));
         var c = new Connection
         {
             Name = Path.GetFileNameWithoutExtension(path),
@@ -96,14 +96,5 @@ public static class RdpFileImport
             ? "alternate full address: " + alt
             : string.Empty;
         return c;
-    }
-
-    private static (string Host, int Port) HostPort(string address, int defaultPort)
-    {
-        var text = address.Trim();
-        var colon = text.LastIndexOf(':');
-        if (colon > 0 && !text.Contains(']') && int.TryParse(text[(colon + 1)..], out var port) && port > 0)
-            return (text[..colon], port);
-        return (text, defaultPort);
     }
 }

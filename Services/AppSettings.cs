@@ -13,7 +13,8 @@ namespace SocRcManager.Services;
 /// </remarks>
 public sealed class AppSettings
 {
-    private static readonly string FilePath = Path.Combine(
+    /// <summary>Donde se guardan (las pruebas lo cambian por un temporal).</summary>
+    internal static string FilePath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sOCRCManager", "settings.json");
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };

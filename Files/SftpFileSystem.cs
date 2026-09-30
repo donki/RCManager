@@ -56,7 +56,8 @@ public sealed class SftpFileSystem : IRemoteFileSystem
             throw new IOException(cmd.Error.Trim().Length > 0 ? cmd.Error.Trim() : $"chown: {cmd.ExitStatus}");
     }, cancellationToken);
 
-    private static string Quote(string s) => "'" + s.Replace("'", "'\\''") + "'";
+    /// <summary>Entre comillas simples para el shell (una comilla dentro se cierra, se escapa y se reabre).</summary>
+    public static string Quote(string s) => "'" + s.Replace("'", "'\\''") + "'";
 
     public string InitialDirectory { get; }
 
@@ -91,13 +92,19 @@ public sealed class SftpFileSystem : IRemoteFileSystem
             {
                 try { isDir = _sftp.GetAttributes(f.FullName).IsDirectory; } catch (Exception) { }
             }
-            var mode = (f.OwnerCanRead ? 0x100 : 0) | (f.OwnerCanWrite ? 0x80 : 0) | (f.OwnerCanExecute ? 0x40 : 0)
-                     | (f.GroupCanRead ? 0x20 : 0) | (f.GroupCanWrite ? 0x10 : 0) | (f.GroupCanExecute ? 0x08 : 0)
-                     | (f.OthersCanRead ? 0x04 : 0) | (f.OthersCanWrite ? 0x02 : 0) | (f.OthersCanExecute ? 0x01 : 0);
-            entries.Add(new FileEntry(f.Name, f.FullName, isDir, f.Length, f.LastWriteTime, mode, f.UserId.ToString(), f.GroupId.ToString()));
+            entries.Add(ToEntry(f, isDir));
         }
         return (IReadOnlyList<FileEntry>)entries;
     }, cancellationToken);
+
+    /// <summary>Una entrada del listado SFTP, con sus bits rwx y el uid/gid como propietario y grupo.</summary>
+    public static FileEntry ToEntry(ISftpFile f, bool isDirectory)
+    {
+        var mode = (f.OwnerCanRead ? 0x100 : 0) | (f.OwnerCanWrite ? 0x80 : 0) | (f.OwnerCanExecute ? 0x40 : 0)
+                 | (f.GroupCanRead ? 0x20 : 0) | (f.GroupCanWrite ? 0x10 : 0) | (f.GroupCanExecute ? 0x08 : 0)
+                 | (f.OthersCanRead ? 0x04 : 0) | (f.OthersCanWrite ? 0x02 : 0) | (f.OthersCanExecute ? 0x01 : 0);
+        return new FileEntry(f.Name, f.FullName, isDirectory, f.Length, f.LastWriteTime, mode, f.UserId.ToString(), f.GroupId.ToString());
+    }
 
     public Task DownloadAsync(string remotePath, string localPath, IProgress<long> progress, CancellationToken cancellationToken) => Task.Run(() =>
     {

@@ -59,7 +59,7 @@ public sealed class RdpSession : ISession
                 }, System.Windows.Threading.DispatcherPriority.Background);
                 return;
             }
-            Ended?.Invoke(Describe(e.discReason));
+            Ended?.Invoke(Services.ConnectionErrors.DescribeRdpDisconnect(e.discReason));
         };
         _rdp.OnConnected += (_, _) => TitleChanged?.Invoke(_connection.Name);
 
@@ -408,14 +408,4 @@ public sealed class RdpSession : ISession
             // Ya estaba cerrado.
         }
     }
-
-    private static string? Describe(int reason) => reason switch
-    {
-        1 or 2 or 3 => null,                     // cierre local o pedido por el usuario
-        260 => Localization.Loc.Get("RdpDnsError"),
-        516 => Localization.Loc.Get("RdpNoConnection"),
-        2308 => Localization.Loc.Get("RdpSocketClosed"),
-        2825 => Localization.Loc.Get("RdpAuthFailed"),
-        _ => Localization.Loc.Format("RdpDisconnected", reason),
-    };
 }

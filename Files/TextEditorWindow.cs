@@ -16,28 +16,6 @@ namespace SocRcManager.Files;
 /// </summary>
 public sealed class TextEditorWindow : Window
 {
-    /// <summary>Hasta aqui se edita dentro; mas grande, se abre fuera.</summary>
-    public const long MaxBytes = 4 * 1024 * 1024;
-
-    private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".txt", ".md", ".log", ".conf", ".cfg", ".ini", ".env", ".json", ".yaml", ".yml", ".xml", ".toml", ".csv",
-        ".sh", ".bash", ".zsh", ".ps1", ".bat", ".cmd", ".py", ".js", ".ts", ".css", ".html", ".htm", ".php", ".sql",
-        ".c", ".h", ".cpp", ".hpp", ".cs", ".java", ".go", ".rs", ".rb", ".pl", ".lua", ".properties", ".service",
-        ".gitignore", ".htaccess", ".crontab", ".dockerfile",
-    };
-
-    /// <summary>Se decide por la extension y, si no dice nada, por el contenido (sin bytes nulos).</summary>
-    public static bool LooksLikeText(FileEntry entry)
-    {
-        if (entry.IsDirectory || entry.Size > MaxBytes)
-            return false;
-        var ext = Path.GetExtension(entry.Name);
-        if (ext.Length == 0)
-            return !entry.Name.StartsWith('.') || entry.Name.Length > 1;   // Makefile, README, .bashrc…
-        return TextExtensions.Contains(ext);
-    }
-
     private readonly IRemoteFileSystem _fs;
     private readonly FileEntry _entry;
     private readonly Encoding _encoding;
@@ -180,26 +158,8 @@ public sealed class TextEditorWindow : Window
         {
             await fs.DownloadAsync(entry.FullPath, temp, new Progress<long>(), CancellationToken.None);
             var bytes = await File.ReadAllBytesAsync(temp);
-            if (bytes.Take(8192).Contains((byte)0))
-                throw new InvalidOperationException(Loc.Get("EditorNotText"));
-
-            // UTF-8 (con o sin BOM) si el contenido es UTF-8 valido; si no, Latin-1, que no rompe nada.
-            Encoding encoding;
-            string content;
-            try
-            {
-                encoding = new UTF8Encoding(bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF, throwOnInvalidBytes: true);
-                content = encoding.GetString(bytes.AsSpan(encoding.GetPreamble().Length == 3 && bytes.Length >= 3 && bytes[0] == 0xEF ? 3 : 0));
-            }
-            catch (DecoderFallbackException)
-            {
-                encoding = Encoding.Latin1;
-                content = encoding.GetString(bytes);
-            }
-            var crlf = content.Contains("\r\n");
-            // El TextBox trabaja con \r\n; se normaliza y al guardar se devuelve el final original.
-            content = content.Replace("\r\n", "\n").Replace("\n", "\r\n");
-            return new TextEditorWindow(owner, fs, entry, content, encoding, crlf);
+            var text = FileRules.DecodeText(bytes) ?? throw new InvalidOperationException(Loc.Get("EditorNotText"));
+            return new TextEditorWindow(owner, fs, entry, text.Content, text.Encoding, text.Crlf);
         }
         finally
         {
@@ -212,10 +172,7 @@ public sealed class TextEditorWindow : Window
         var temp = Path.Combine(Path.GetTempPath(), "sOCRCManager", "editor", Guid.NewGuid().ToString("N"));
         try
         {
-            var content = _text.Text;
-            if (!_crlf)
-                content = content.Replace("\r\n", "\n");
-            await File.WriteAllBytesAsync(temp, _encoding.GetPreamble().Concat(_encoding.GetBytes(content)).ToArray());
+            await File.WriteAllBytesAsync(temp, FileRules.EncodeText(_text.Text, _encoding, _crlf));
             _status.Text = Loc.Get("EditorSaving");
             await _fs.UploadAsync(temp, _entry.FullPath, new Progress<long>(), CancellationToken.None);
             _dirty = false;

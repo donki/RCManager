@@ -11,10 +11,11 @@ public static class AppLog
 {
     private static readonly object Gate = new();
 
-    public static string Folder { get; } = Path.Combine(
+    /// <summary>Carpeta del registro (las pruebas la cambian por una temporal).</summary>
+    public static string Folder { get; internal set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sOCRCManager");
 
-    public static string FilePath { get; } = Path.Combine(Folder, "errors.log");
+    public static string FilePath => Path.Combine(Folder, "errors.log");
 
     public static void Write(string text)
     {

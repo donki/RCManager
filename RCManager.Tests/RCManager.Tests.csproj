@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pruebas de la logica de sOC Remote Connections Manager (xUnit). La aplicacion es un solo
+    proyecto WPF con la interfaz mezclada: aqui se enlazan solo los ficheros sin interfaz (modelo,
+    importadores, cifrado, almacen, nube, errores, textos, ficheros y el interprete del terminal).
+    Ventanas, controles y el control RDP (interop mstscax) no se enlazan ni se prueban.
+    Nada toca los datos reales: el almacen, los ajustes y el registro van a carpetas temporales, y
+    la nube y OAuth hablan con un HttpMessageHandler falso.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- WPF solo porque Localization/Loc.cs trae la extension de marcado {loc:T} (System.Xaml). -->
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>SocRcManager.Tests</RootNamespace>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <!-- Las mismas versiones que la aplicacion. -->
+    <PackageReference Include="FluentFTP" Version="54.2.1" />
+    <PackageReference Include="SSH.NET" Version="2025.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Models\Connection.cs" Link="App\Models\Connection.cs" />
+    <Compile Include="..\Localization\Loc.cs" Link="App\Localization\Loc.cs" />
+    <Compile Include="..\Services\AppLog.cs" Link="App\Services\AppLog.cs" />
+    <Compile Include="..\Services\AppSettings.cs" Link="App\Services\AppSettings.cs" />
+    <Compile Include="..\Services\CloudDrive.cs" Link="App\Services\CloudDrive.cs" />
+    <Compile Include="..\Services\CloudSync.cs" Link="App\Services\CloudSync.cs" />
+    <Compile Include="..\Services\ConnectionErrors.cs" Link="App\Services\ConnectionErrors.cs" />
+    <Compile Include="..\Services\HostAddress.cs" Link="App\Services\HostAddress.cs" />
+    <Compile Include="..\Services\OAuthClient.cs" Link="App\Services\OAuthClient.cs" />
+    <Compile Include="..\Services\RdmImport.cs" Link="App\Services\RdmImport.cs" />
+    <Compile Include="..\Services\RdpFileImport.cs" Link="App\Services\RdpFileImport.cs" />
+    <Compile Include="..\Services\Secrets.cs" Link="App\Services\Secrets.cs" />
+    <Compile Include="..\Services\Store.cs" Link="App\Services\Store.cs" />
+    <Compile Include="..\Services\Vault.cs" Link="App\Services\Vault.cs" />
+    <Compile Include="..\Files\IRemoteFileSystem.cs" Link="App\Files\IRemoteFileSystem.cs" />
+    <Compile Include="..\Files\FileSides.cs" Link="App\Files\FileSides.cs" />
+    <Compile Include="..\Files\FileRules.cs" Link="App\Files\FileRules.cs" />
+    <Compile Include="..\Files\UnixMode.cs" Link="App\Files\UnixMode.cs" />
+    <Compile Include="..\Files\FtpFileSystem.cs" Link="App\Files\FtpFileSystem.cs" />
+    <Compile Include="..\Files\SftpFileSystem.cs" Link="App\Files\SftpFileSystem.cs" />
+    <Compile Include="..\Sessions\TerminalBuffer.cs" Link="App\Sessions\TerminalBuffer.cs" />
+  </ItemGroup>
+
+</Project>

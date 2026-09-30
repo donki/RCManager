@@ -100,7 +100,7 @@ public partial class FileBrowserControl : UserControl
                 var plan = new List<(FileEntry Entry, string Target)>();
                 long total = 0;
                 foreach (var entry in entries)
-                    total += await PlanAsync(from.Side!, to.Side!, entry, to.CurrentPath, plan, token);
+                    total += await FileRules.PlanAsync(from.Side!, to.Side!, entry, to.CurrentPath, plan, token);
 
                 // 2. Conflictos: lo que ya existe en el destino, segun la opcion de la conexion.
                 var policy = (Conflict)Math.Clamp(options.TransferOnConflict, 0, 2);
@@ -145,7 +145,7 @@ public partial class FileBrowserControl : UserControl
                 void Report(string name) => Dispatcher.BeginInvoke(() =>
                 {
                     Progress.Value = total > 0 ? Math.Min(100, Interlocked.Read(ref done) * 100.0 / total) : 0;
-                    TransferText.Text = Loc.Format(upload ? "FilesUploading" : "FilesDownloading", name, FileRow.Format(Interlocked.Read(ref done)), FileRow.Format(total))
+                    TransferText.Text = Loc.Format(upload ? "FilesUploading" : "FilesDownloading", name, FileRules.SizeText(Interlocked.Read(ref done)), FileRules.SizeText(total))
                         + (active > 1 ? $"  ·  ×{active}" : string.Empty);
                 });
 
@@ -259,19 +259,6 @@ public partial class FileBrowserControl : UserControl
         finally { _poolGate.Release(); }
     }
 
-    /// <summary>Recorre lo que hay que transferir (directorios incluidos) y devuelve los bytes totales.</summary>
-    private static async Task<long> PlanAsync(IFileSide from, IFileSide to, FileEntry entry, string targetDirectory, List<(FileEntry, string)> plan, CancellationToken token)
-    {
-        var target = to.Combine(targetDirectory, entry.Name);
-        plan.Add((entry, target));
-        if (!entry.IsDirectory)
-            return entry.Size;
-        long total = 0;
-        foreach (var child in await from.ListAsync(entry.FullPath, token))
-            total += await PlanAsync(from, to, child, target, plan, token);
-        return total;
-    }
-
     private void OnCancelClick(object sender, RoutedEventArgs e) => _transfer?.Cancel();
 
     // =====================================================================
@@ -314,7 +301,7 @@ public partial class FileBrowserControl : UserControl
         {
             Directory.CreateDirectory(TempRoot);
             var local = Path.Combine(TempRoot, entry.Name);
-            TransferText.Text = Loc.Format("FilesDownloading", entry.Name, "0 B", FileRow.Format(entry.Size));
+            TransferText.Text = Loc.Format("FilesDownloading", entry.Name, "0 B", FileRules.SizeText(entry.Size));
             await _remote.Fs.DownloadAsync(entry.FullPath, local, new Progress<long>(), CancellationToken.None);
             TransferText.Text = Loc.Get("FilesDone");
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(local) { UseShellExecute = true });

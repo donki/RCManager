@@ -48,4 +48,18 @@ public static class ConnectionErrors
         }
         return ex.Message.ReplaceLineEndings(" ");
     }
+
+    /// <summary>
+    /// Por que se ha cerrado una sesion RDP (el <c>discReason</c> del control de Windows), o null si
+    /// la cerro este lado o el usuario y no hay nada que contar.
+    /// </summary>
+    public static string? DescribeRdpDisconnect(int reason) => reason switch
+    {
+        1 or 2 or 3 => null,                     // cierre local o pedido por el usuario
+        260 => Loc.Get("RdpDnsError"),
+        516 => Loc.Get("RdpNoConnection"),
+        2308 => Loc.Get("RdpSocketClosed"),
+        2825 => Loc.Get("RdpAuthFailed"),
+        _ => Loc.Format("RdpDisconnected", reason),
+    };
 }

@@ -8,8 +8,7 @@ public sealed record FileEntry(string Name, string FullPath, bool IsDirectory, l
     int? Mode = null, string? Owner = null, string? Group = null)
 {
     /// <summary>«rwxr-xr-x» a partir de los bits.</summary>
-    public string ModeText => Mode is null ? string.Empty : string.Concat(
-        Enumerable.Range(0, 9).Select(i => (Mode.Value & (1 << (8 - i))) != 0 ? "rwx"[i % 3] : '-'));
+    public string ModeText => Mode is null ? string.Empty : UnixMode.ToText(Mode.Value);
 }
 
 /// <summary>

@@ -1,5 +1,20 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.9.30.0 — Pruebas automáticas y cinco arreglos que salieron con ellas
+
+- **FTP: «Conservar la fecha» no funcionaba al subir.** La fecha se le daba a la biblioteca de FTP
+  en UTC cuando esperaba la hora local; lanzaba un error que se callaba y el fichero quedaba con la
+  fecha de la subida. Ahora el servidor recibe la fecha del original.
+- **Cancelar la entrada con Google o Microsoft** (o que pasen los tres minutos de espera) decía
+  «Nube: Cannot access a disposed object…» en vez de «Entrada cancelada».
+- **Ficheros de configuración con punto** (`.bashrc`, `.profile`, `.vimrc`…) se abren en el
+  editor integrado, como decía la ayuda; antes se abrían fuera con una copia.
+- **Importar con IPv6:** una dirección sin corchetes (`fe80::1`) se partía como si el final fuese un
+  puerto; y `[fe80::1]:3390` en un `.rdp` no separaba el puerto.
+- **Importar .rdm:** un grupo con un espacio al final creaba la carpeta «Clientes/Vacía/» aparte.
+- Por dentro: la lógica sin interfaz del explorador de ficheros, los permisos y el intérprete del
+  terminal va en clases propias, y hay un proyecto de pruebas (`RCManager.Tests`, 330 pruebas).
+
 ## 2026.9.29.0 — Textos sin nombres de productos ajenos
 
 - La ayuda del botón de importar, la explicación de Importar y el filtro del diálogo de abrir

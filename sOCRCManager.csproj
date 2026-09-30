@@ -12,9 +12,9 @@
     <RootNamespace>SocRcManager</RootNamespace>
     <AssemblyName>sOCRCManager</AssemblyName>
     <ApplicationTitle>sOC Remote Connections Manager</ApplicationTitle>
-    <Version>2026.9.29.0</Version>
-    <AssemblyVersion>2026.9.29.0</AssemblyVersion>
-    <FileVersion>2026.9.29.0</FileVersion>
+    <Version>2026.9.30.0</Version>
+    <AssemblyVersion>2026.9.30.0</AssemblyVersion>
+    <FileVersion>2026.9.30.0</FileVersion>
     <Product>sOC Remote Connections Manager</Product>
     <Company>Socratic</Company>
     <Copyright>Copyright © 2026 Socratic</Copyright>
@@ -23,6 +23,14 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+
+  <!-- El proyecto de pruebas vive dentro de la carpeta: no es parte de la aplicacion. -->
+  <ItemGroup>
+    <Compile Remove="RCManager.Tests\**" />
+    <Page Remove="RCManager.Tests\**" />
+    <None Remove="RCManager.Tests\**" />
+    <EmbeddedResource Remove="RCManager.Tests\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />

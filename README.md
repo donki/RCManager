@@ -90,6 +90,26 @@ ensamblados `Interop\MSTSCLib.dll` y `Interop\AxMSTSCLib.dll` vienen generados; 
 (por ejemplo en otro equipo) está `tools\generar-interop.ps1`, que usa `aximp` del SDK de .NET
 Framework 4.8 porque MSBuild de .NET Core no resuelve referencias COM.
 
+## Pruebas
+
+`RCManager.Tests` (xUnit): **330 pruebas** de la lógica sin interfaz (importadores .rdm/.rdp,
+modelo y árbol de carpetas, almacén, ajustes, registro, DPAPI y cifrado de la nube, Google
+Drive/OneDrive y OAuth con un HTTP falso, errores de conexión, textos es/en, permisos rwx,
+chmod/chown, listados FTP, reglas del explorador y el intérprete del terminal), más FTP completo
+contra un servidor FTP falso en 127.0.0.1. Nada toca los datos reales ni sale a la red.
+
+- Cobertura de lo instrumentado (ficheros enlazados): **94,4 %** de líneas.
+- Cobertura sobre toda la app: **43,5 %** (2066 de 4744 líneas ejecutables; la interfaz WPF, el
+  control RDP y SFTP/SSH contra un servidor no se prueban aquí).
+- Tiempo del banco: **unos 10 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-09-30.
+
+```
+dotnet test RCManager.Tests
+dotnet test RCManager.Tests --collect:"XPlat Code Coverage" --settings RCManager.Tests\coverage.runsettings
+dotnet tool restore
+dotnet tool run reportgenerator -reports:RCManager.Tests\TestResults\*\coverage.cobertura.xml -targetdir:cobertura -reporttypes:TextSummary
+```
+
 ## Qué puede romper
 
 Nada fuera de su carpeta de datos. Borrar una carpeta del árbol borra las conexiones que tiene
