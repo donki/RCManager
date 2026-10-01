@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -31,7 +31,7 @@ public sealed class RcApp : IDisposable
 
     public Application App { get; }
     public UIA3Automation Automation { get; } = new();
-    public Window Main { get; }
+    public Window Main { get; private set; } = null!;
     public ConditionFactory Cf => Automation.ConditionFactory;
 
     /// <summary>Carpeta de datos del modo aislado de esta instancia (connections.json, settings.json...).</summary>
@@ -40,23 +40,21 @@ public sealed class RcApp : IDisposable
     /// <summary>Si al arrancar la ventana de la aplicacion se quedo con el primer plano.</summary>
     public bool StoleFocusOnLaunch { get; }
 
-    private RcApp(string testName)
+    private RcApp(string testName, string[] args, string? connectionsJson, bool hidden)
     {
         _testName = testName;
         DataFolder = Path.Combine(Path.GetTempPath(), "sOCRCManager-uitests", $"{testName}-{Guid.NewGuid():N}");
         Directory.CreateDirectory(DataFolder);
+        if (connectionsJson is not null)
+            File.WriteAllText(Path.Combine(DataFolder, "connections.json"), connectionsJson);
 
         var foregroundBefore = GetForegroundWindow();
         _foregroundBeforeName = ForegroundName();
-        var psi = new ProcessStartInfo(ExePath, "--size 1100x720")
-        {
-            UseShellExecute = false,
-            WorkingDirectory = Path.GetDirectoryName(ExePath)!,
-        };
-        psi.Environment["SOC_SANDBOX"] = DataFolder;
+        var psi = StartInfo(["--size", "1100x720", .. args]);
         App = Application.Launch(psi);
-        Main = Retry.WhileNull(() => App.GetMainWindow(Automation, TimeSpan.FromSeconds(1)), Timeout, throwOnTimeout: true).Result!;
-        Main.WaitUntilClickable(Timeout);
+        if (hidden)
+            return;
+        WaitMainWindow();
 
         var foregroundAfter = GetForegroundWindow();
         GetWindowThreadProcessId(foregroundAfter, out var pid);
@@ -65,7 +63,79 @@ public sealed class RcApp : IDisposable
             $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {testName}: {(StoleFocusOnLaunch ? "LA APP SE QUEDO CON EL PRIMER PLANO" : "sin robar el foco")}{Environment.NewLine}");
     }
 
-    public static RcApp Launch([System.Runtime.CompilerServices.CallerMemberName] string testName = "") => new(testName);
+    public static RcApp Launch([System.Runtime.CompilerServices.CallerMemberName] string testName = "") => new(testName, [], null, hidden: false);
+
+    /// <summary>
+    /// Con conexiones de prueba ya guardadas (JSON de connections.json) y argumentos (p. ej. --open).
+    /// Con <paramref name="hidden"/> (--tray) no se espera la ventana: <see cref="WaitMainWindow"/>.
+    /// </summary>
+    public static RcApp LaunchWith(string? connectionsJson, string[] args, bool hidden = false,
+        [System.Runtime.CompilerServices.CallerMemberName] string testName = "") => new(testName, args, connectionsJson, hidden);
+
+    /// <summary>El exe con SOC_SANDBOX apuntando a la carpeta de esta instancia (para la segunda instancia).</summary>
+    public ProcessStartInfo StartInfo(IEnumerable<string> args)
+    {
+        var psi = new ProcessStartInfo(ExePath)
+        {
+            UseShellExecute = false,
+            WorkingDirectory = Path.GetDirectoryName(ExePath)!,
+        };
+        foreach (var a in args)
+            psi.ArgumentList.Add(a);
+        psi.Environment["SOC_SANDBOX"] = DataFolder;
+        return psi;
+    }
+
+    /// <summary>Espera la ventana principal (visible) de la aplicacion.</summary>
+    public Window WaitMainWindow()
+    {
+        Main = Retry.WhileNull(() => App.GetMainWindow(Automation, TimeSpan.FromSeconds(1)), Timeout, throwOnTimeout: true).Result!;
+        Main.WaitUntilClickable(Timeout);
+        return Main;
+    }
+
+    /// <summary>Espera a que se cumpla la condicion (true) o se acabe el tiempo (false).</summary>
+    public static bool WaitUntil(Func<bool> condition, TimeSpan? timeout = null)
+    {
+        var end = DateTime.UtcNow + (timeout ?? Timeout);
+        while (true)
+        {
+            try { if (condition()) return true; } catch (Exception) { }
+            if (DateTime.UtcNow > end) return false;
+            Thread.Sleep(100);
+        }
+    }
+
+    /// <summary>Si la ventana nativa esta visible (escondida en la bandeja no lo esta).</summary>
+    public static bool IsVisible(IntPtr hwnd) => IsWindowVisible(hwnd);
+
+    public static bool IsAlive(IntPtr hwnd) => IsWindow(hwnd);
+
+    /// <summary>Ventanas de primer nivel de la aplicacion (la principal y las sueltas).</summary>
+    /// <remarks>
+    /// Por Win32 (EnumWindows con el pid) y no preguntando a UI Automation por todas las ventanas del
+    /// escritorio: una ventana colgada de otro programa hace esperar segundos a cada consulta.
+    /// </remarks>
+    public Window[] TopWindows()
+    {
+        var found = new List<IntPtr>();
+        EnumWindows((hwnd, _) =>
+        {
+            GetWindowThreadProcessId(hwnd, out var pid);
+            if (pid == App.ProcessId && IsWindowVisible(hwnd))
+                found.Add(hwnd);
+            return true;
+        }, IntPtr.Zero);
+        return found.Select(h => Automation.FromHandle(h).AsWindow()).ToArray();
+    }
+
+    /// <summary>JSON de conexiones de prueba: servidores .invalid (no existen), y en modo aislado tampoco se conecta.</summary>
+    public static string Connections(params (string Name, string Kind, int Port)[] items) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Connections = items.Select(i => new { Id = Guid.NewGuid(), i.Name, i.Kind, Host = "ejemplo.invalid", i.Port, UserName = "nadie" }).ToArray(),
+            EmptyFolders = Array.Empty<string>(),
+        });
 
     // =====================================================================
     //  Rutas
@@ -208,9 +278,11 @@ public sealed class RcApp : IDisposable
         try
         {
             // Primero por las buenas (guarda el estado del arbol, como al cerrar a mano)...
-            foreach (var modal in Main.ModalWindows)
-                modal.Close();
-            App.Close();
+            if (Main is not null)
+                foreach (var modal in Main.ModalWindows)
+                    modal.Close();
+            if (!App.HasExited)
+                App.Close();
             var process = Process.GetProcessById(App.ProcessId);
             if (!process.WaitForExit(5000))
                 process.Kill(entireProcessTree: true);
@@ -224,6 +296,14 @@ public sealed class RcApp : IDisposable
             // ...y si no, por las malas: nunca se queda un sOCRCManager de pruebas vivo.
             try { Process.GetProcessById(App.ProcessId).Kill(entireProcessTree: true); } catch { }
         }
+        // El registro de errores de la aplicacion, si dejo algo, a artefactos antes de borrar la carpeta.
+        try
+        {
+            var log = Directory.GetFiles(DataFolder, "*.log").FirstOrDefault();
+            if (log is not null)
+                File.Copy(log, Path.Combine(ArtifactsFolder, $"{_testName}-{Path.GetFileName(log)}"), overwrite: true);
+        }
+        catch { }
         App.Dispose();
         Automation.Dispose();
         try { Directory.Delete(DataFolder, recursive: true); } catch { }
@@ -244,6 +324,10 @@ public sealed class RcApp : IDisposable
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
 
+    private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();

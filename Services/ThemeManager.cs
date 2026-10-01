@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -16,31 +16,44 @@ public static class ThemeManager
 
     public static bool IsDark { get; private set; }
 
+    /// <summary>Colores del tema oscuro (nombre de recurso de App.xaml y color).</summary>
+    private static readonly Dictionary<string, string> Dark = new()
+    {
+        ["PageBackground"] = "#141318",
+        ["CardBackground"] = "#201F27",
+        ["Separator"] = "#48454F",
+        ["TextPrimary"] = "#E6E1E9",
+        ["TextSecondary"] = "#C7C4D8",
+        ["MirrorBackground"] = "#000000",
+        ["WarningSurface"] = "#33291A",
+    };
+
+    /// <summary>Colores del tema claro.</summary>
+    private static readonly Dictionary<string, string> Light = new()
+    {
+        ["PageBackground"] = "#F8F9FA",
+        ["CardBackground"] = "#FFFFFF",
+        ["Separator"] = "#C7C4D8",
+        ["TextPrimary"] = "#191C1D",
+        ["TextSecondary"] = "#464555",
+        ["MirrorBackground"] = "#1B1B22",
+        ["WarningSurface"] = "#FFF4E5",
+    };
+
+    /// <summary>Los colores que cambian entre el tema claro y el oscuro.</summary>
+    public static IReadOnlyDictionary<string, string> Palette(bool dark) => dark ? Dark : Light;
+
     public static void Apply()
     {
         IsDark = PrefersDark();
-        var resources = Application.Current.Resources;
+        Apply(Application.Current.Resources, IsDark);
+    }
 
-        if (IsDark)
-        {
-            Set(resources, "PageBackground", "#141318");
-            Set(resources, "CardBackground", "#201F27");
-            Set(resources, "Separator", "#48454F");
-            Set(resources, "TextPrimary", "#E6E1E9");
-            Set(resources, "TextSecondary", "#C7C4D8");
-            Set(resources, "MirrorBackground", "#000000");
-            Set(resources, "WarningSurface", "#33291A");
-        }
-        else
-        {
-            Set(resources, "PageBackground", "#F8F9FA");
-            Set(resources, "CardBackground", "#FFFFFF");
-            Set(resources, "Separator", "#C7C4D8");
-            Set(resources, "TextPrimary", "#191C1D");
-            Set(resources, "TextSecondary", "#464555");
-            Set(resources, "MirrorBackground", "#1B1B22");
-            Set(resources, "WarningSurface", "#FFF4E5");
-        }
+    /// <summary>Pone en esos recursos los pinceles del tema pedido.</summary>
+    public static void Apply(ResourceDictionary resources, bool dark)
+    {
+        foreach (var (key, hex) in Palette(dark))
+            Set(resources, key, hex);
     }
 
     /// <summary>La barra de titulo la pinta Windows: se le pide que siga al tema (DWM).</summary>
@@ -54,7 +67,8 @@ public static class ThemeManager
         DwmSetWindowAttribute(handle, 20, ref dark, sizeof(int));
     }
 
-    private static bool PrefersDark()
+    /// <summary>Si Windows tiene puesto el modo oscuro para las aplicaciones.</summary>
+    internal static bool PrefersDark()
     {
         try
         {

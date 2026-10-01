@@ -17,7 +17,8 @@ public sealed class PromptWindow : Window
     private readonly Controls.RevealPasswordBox? _password;
     private readonly CheckBox? _check;
 
-    private PromptWindow(Window owner, string title, string message, string? initial, bool password, bool confirm, string? checkText = null, bool alert = false)
+    private PromptWindow(Window owner, string title, string message, string? initial, bool password, bool confirm, string? checkText = null, bool alert = false,
+        string? okTooltip = null, string? okGlyph = null)
     {
         Owner = owner;
         Title = title;
@@ -64,8 +65,8 @@ public sealed class PromptWindow : Window
         var ok = new Button
         {
             Style = (Style)FindResource(confirm ? "DangerIconButton" : "IconButton"),
-            Content = confirm ? "" : "",
-            ToolTip = confirm ? Loc.Get("Delete") : alert ? Loc.Get("Ok") : Loc.Get("Save"),
+            Content = okGlyph ?? (confirm ? "" : ""),
+            ToolTip = okTooltip ?? (confirm ? Loc.Get("Delete") : alert ? Loc.Get("Ok") : Loc.Get("Save")),
             IsDefault = true,
             IsCancel = alert,
         };
@@ -115,6 +116,7 @@ public sealed class PromptWindow : Window
     public static void Alert(Window owner, string title, string message) =>
         new PromptWindow(owner, title, message, null, password: false, confirm: false, alert: true).ShowDialog();
 
-    public static bool Confirm(Window owner, string title, string message) =>
-        new PromptWindow(owner, title, message, null, password: false, confirm: true).ShowDialog() == true;
+    /// <summary>Confirmar algo que no se deshace. Por defecto el boton es el de borrar; se puede cambiar.</summary>
+    public static bool Confirm(Window owner, string title, string message, string? okTooltip = null, string? okGlyph = null) =>
+        new PromptWindow(owner, title, message, null, password: false, confirm: true, okTooltip: okTooltip, okGlyph: okGlyph).ShowDialog() == true;
 }

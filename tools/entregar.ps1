@@ -35,9 +35,30 @@ if (-not (Test-Path $exe)) { throw 'No hay exe publicado.' }
 $d = 'C:\ID\OneDrive\RCManager'
 New-Item -ItemType Directory -Force $d | Out-Null
 Get-ChildItem $d -Include *.msix -Recurse | Remove-Item -Force
+
+# La instancia de Josep (la del exe de OneDrive), si esta abierta: se cierra para sustituirla y se
+# vuelve a abrir al acabar (constitucion general 8.3). Pero nunca con sesiones abiertas: tener una
+# conexion TCP establecida con otro equipo (RDP, SSH, FTP) es tener una sesion, y cortarla no se
+# hace sin preguntar. Entonces la version nueva se queda al lado como sOCRCManager-nueva.exe.
+$relanzar = $null
+$suya = Get-Process sOCRCManager -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq "$d\sOCRCManager.exe" }
+foreach ($p in $suya) {
+    $remotas = Get-NetTCPConnection -OwningProcess $p.Id -State Established -ErrorAction SilentlyContinue |
+        Where-Object { $_.RemoteAddress -notin '127.0.0.1', '::1' }
+    if ($remotas) {
+        Write-Warning "La instancia abierta (pid $($p.Id)) tiene $(@($remotas).Count) conexion(es) abiertas: no se cierra."
+        continue
+    }
+    # Escondida en la bandeja: se vuelve a abrir igual (--tray).
+    $relanzar = if ($p.MainWindowHandle -eq 0) { @('--tray') } else { @() }
+    # Por las buenas (guarda el arbol y los ajustes al cerrarse); si no, por las malas.
+    & taskkill /PID $p.Id 2>&1 | Out-Null
+    if (-not $p.WaitForExit(10000)) { Stop-Process -Id $p.Id -Force; $p.WaitForExit(5000) | Out-Null }
+}
+
 try { Copy-Item $exe $d -Force -ErrorAction Stop; Remove-Item "$d\sOCRCManager-nueva.exe" -ErrorAction SilentlyContinue }
 catch {
-    # El exe de OneDrive esta en uso (la aplicacion abierta): se deja al lado y se renombra al cerrarla.
+    # El exe de OneDrive esta en uso (la aplicacion abierta con sesiones): se deja al lado y se renombra al cerrarla.
     Copy-Item $exe "$d\sOCRCManager-nueva.exe" -Force
     Write-Warning "sOCRCManager.exe estaba en uso: la version nueva queda como sOCRCManager-nueva.exe"
 }
@@ -75,6 +96,15 @@ Software libre bajo licencia MIT. En español y en ingles, claro y oscuro.
 "@
 [IO.File]::WriteAllText("$d\LEEME.txt", $leeme, (New-Object Text.UTF8Encoding $false))
 "OneDrive: " + ((Get-ChildItem $d | ForEach-Object { $_.Name }) -join ', ')
+
+# La que estaba abierta, otra vez, ya con la version nueva: se comprueba que corre la nueva.
+if ($null -ne $relanzar) {
+    $nueva = if ($relanzar.Count) { Start-Process "$d\sOCRCManager.exe" -ArgumentList $relanzar -PassThru } else { Start-Process "$d\sOCRCManager.exe" -PassThru }
+    Start-Sleep -Seconds 3
+    $corre = (Get-Process -Id $nueva.Id -ErrorAction SilentlyContinue).MainModule.FileVersionInfo.FileVersion
+    if ($corre -eq $Version) { "Reabierta la instancia de OneDrive: $corre" + $(if ($relanzar) { ' (en la bandeja)' } else { '' }) }
+    else { Write-Warning "La instancia reabierta no es la $Version (es '$corre')" }
+}
 
 # 4. Git y release.
 git add -A

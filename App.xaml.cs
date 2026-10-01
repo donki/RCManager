@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.IO;
+using System.Windows;
 using SocRcManager.Localization;
 using SocRcManager.Services;
 
@@ -30,42 +31,139 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
             AppLog.Write($"error fatal: {ex.ExceptionObject}");
 
-        ThemeManager.Apply();
-        // sOCRCManager.exe --open "Nombre de la conexion" [--open "Otra"]: abre esas sesiones al
-        // arrancar (accesos directos a un servidor concreto).
-        // --size AxAl fija el tamaño de la ventana; --edit "Nombre" abre el editor de esa conexion
-        // (--edit-tab N en esa pestaña). Sirven para capturas de pantalla y para accesos directos.
-        var open = new List<string>();
-        string? edit = null;
-        string? editFileConnection = null, editFilePath = null;
-        var editTab = 0;
-        (int W, int H)? size = null;
-        for (var i = 0; i < e.Args.Length - 1; i++)
+        // Una sola instancia (constitucion general 8.3): si ya hay una abierta, aunque este en el area
+        // de notificacion, se le pasa lo pedido (ponerse delante, --open...) y esta se cierra. Si no
+        // contesta en un par de segundos, esta arranca igual.
+        _single = new SingleInstance(SingleInstance.NameFor(Sandbox.Folder));
+        var outcome = _single.Start(new SingleInstance.Request(MyVersion.ToString(), e.Args, Environment.ProcessPath),
+            patience: TimeSpan.FromSeconds(5), ackTimeout: TimeSpan.FromSeconds(2.5));
+        if (outcome == SingleInstance.Outcome.HandedOver)
         {
-            var key = e.Args[i].ToLowerInvariant();
-            if (key == "--open") open.Add(e.Args[++i]);
-            else if (key == "--edit") edit = e.Args[++i];
-            else if (key == "--edit-file" && i + 2 < e.Args.Length) { editFileConnection = e.Args[++i]; editFilePath = e.Args[++i]; }
-            else if (key == "--edit-tab") int.TryParse(e.Args[++i], out editTab);
-            else if (key == "--size" && e.Args[++i].Split('x') is [var w, var h] && int.TryParse(w, out var pw) && int.TryParse(h, out var ph))
-                size = (pw, ph);
+            _single.Dispose();
+            _single = null;
+            Shutdown();
+            return;
         }
+        if (outcome == SingleInstance.Outcome.StartAnyway)
+            AppLog.Write("instancia unica: hay otra abierta que no contesta; se arranca igual");
 
+        // Las ventanas sueltas (pestañas sacadas) no mantienen viva la aplicacion: manda la principal.
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
+        ThemeManager.Apply();
+
+        // sOCRCManager.exe --open "Nombre de la conexion" [--open "Otra"]: abre esas sesiones al
+        // arrancar (accesos directos a un servidor concreto). --tray: escondida en el area de
+        // notificacion. --size AxAl, --edit, --edit-tab, --edit-file: capturas y accesos directos
+        // (StartupArgs).
+        var args = StartupArgs.Parse(e.Args);
         var window = new MainWindow();
         MainWindow = window;
-        if (size is { } s)
+        if (args.Size is { } s)
         {
-            window.Width = s.W;
-            window.Height = s.H;
+            window.Width = s.Width;
+            window.Height = s.Height;
         }
-        window.Show();
-        foreach (var name in open)
+        if (args.Tray)
+            window.StartInTray();
+        else
+            window.Show();
+        Run(window, args);
+
+        if (outcome == SingleInstance.Outcome.First)
+            _single.Listen(OnOtherInstance);
+    }
+
+    private SingleInstance? _single;
+
+    private static Version MyVersion => typeof(App).Assembly.GetName().Version ?? new Version(0, 0);
+
+    /// <summary>Lo que piden los argumentos (al arrancar, o lo que manda otra instancia).</summary>
+    private static void Run(MainWindow window, StartupArgs args)
+    {
+        foreach (var name in args.Open)
             window.OpenByName(name);
         // --edit-file "Conexion" "/ruta/fichero": abre esa conexion de ficheros y el fichero en el editor.
-        if (editFileConnection is not null && editFilePath is not null)
-            window.OpenFileInEditor(editFileConnection, editFilePath);
-        if (edit is not null)
-            window.Dispatcher.BeginInvoke(() => window.EditByName(edit, editTab), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        if (args.EditFileConnection is { } connection && args.EditFilePath is { } path)
+            window.OpenFileInEditor(connection, path);
+        if (args.Edit is { } edit)
+            window.Dispatcher.BeginInvoke(() => window.EditByName(edit, args.EditTab), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>
+    /// Otra instancia acaba de arrancar (hilo de la tuberia). Se atiende en el hilo de la interfaz; si
+    /// esta no responde en dos segundos (un dialogo no la bloquea, un cuelgue si), no se contesta y la
+    /// otra arranca igual.
+    /// </summary>
+    private (SingleInstance.Reply? Reply, Action? After) OnOtherInstance(SingleInstance.Request request)
+    {
+        var op = Dispatcher.InvokeAsync(() => HandleOtherInstance(request));
+        if (!op.Task.Wait(TimeSpan.FromSeconds(2)))
+        {
+            op.Abort();
+            return (null, null);
+        }
+        return op.Result;
+    }
+
+    private (SingleInstance.Reply? Reply, Action? After) HandleOtherInstance(SingleInstance.Request request)
+    {
+        if (MainWindow is not MainWindow window)
+            return (null, null);
+        var theirs = Version.TryParse(request.Version, out var v) ? v : null;
+        var args = StartupArgs.Parse(request.Args);
+        switch (SingleInstance.Decide(MyVersion, theirs, window.HasOpenSessions))
+        {
+            case SingleInstance.Answer.Yield:
+                // Manda la version nueva y aqui no hay nada abierto: esta se cierra y la otra sigue.
+                AppLog.Write($"instancia unica: se abre la {theirs} y esta es la {MyVersion}; se le deja el sitio");
+                return (SingleInstance.Reply.Yield, () => Dispatcher.BeginInvoke(() => { window.CloseForced(); Shutdown(); }));
+
+            case SingleInstance.Answer.ShowAndOfferUpdate:
+                window.BringToFront();
+                return (SingleInstance.Reply.Shown, () => Dispatcher.BeginInvoke(() => OfferNewerVersion(window, request, theirs!)));
+
+            default:
+                // --tray de otra (arranque con Windows con esta ya abierta): nada que enseñar.
+                if (args.ShowsExisting)
+                    window.BringToFront();
+                // Despues de contestar: abrir una conexion puede pedir la contraseña (un dialogo).
+                return (SingleInstance.Reply.Shown, () => Dispatcher.BeginInvoke(() => Run(window, args)));
+        }
+    }
+
+    /// <summary>
+    /// Se ha abierto una version mas nueva y esta tiene sesiones abiertas: no se cortan sin preguntar.
+    /// Si se acepta, esta se cierra y arranca la nueva con lo que se le pidio.
+    /// </summary>
+    private void OfferNewerVersion(MainWindow window, SingleInstance.Request request, Version theirs)
+    {
+        if (!PromptWindow.Confirm(window, Loc.Get("NewerInstanceTitle"), Loc.Format("NewerInstanceText", theirs, MyVersion, window.OpenSessionCount),
+                Loc.Get("NewerInstanceOk"), ""))
+            return;
+        window.CloseForced();
+        _single?.Dispose();
+        _single = null;
+        try
+        {
+            if (request.Exe is { Length: > 0 } exe && File.Exists(exe))
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false };
+                foreach (var a in request.Args)
+                    psi.ArgumentList.Add(a);
+                System.Diagnostics.Process.Start(psi);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"no se pudo abrir la version nueva: {ex}");
+        }
+        Shutdown();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _single?.Dispose();
+        base.OnExit(e);
     }
 
     private bool _showingError;

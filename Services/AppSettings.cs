@@ -48,6 +48,18 @@ public sealed class AppSettings
     /// </summary>
     public bool TrayOnMinimize { get; set; } = true;
 
+    /// <summary>
+    /// Donde estaba la ventana suelta de cada conexion (clave: <see cref="SessionPlacement.Key"/>):
+    /// al sacarla otra vez vuelve a ese sitio, en su monitor.
+    /// </summary>
+    public Dictionary<string, WindowBounds> DetachedWindows { get; set; } = [];
+
+    /// <summary>
+    /// Al cerrar la ventana principal con pestañas sacadas a su propia ventana: preguntar antes
+    /// (encendido) o cerrarlas todas sin preguntar.
+    /// </summary>
+    public bool AskBeforeClosingDetached { get; set; } = true;
+
     /// <summary>La instancia viva de la ventana principal, para quien no la tiene a mano (el editor).</summary>
     public static AppSettings? Current { get; set; }
 

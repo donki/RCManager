@@ -64,7 +64,7 @@ Write-Host "Version del paquete: $Version"
 
 # --- Publicar el ejecutable autocontenido, igual que la entrega de siempre.
 Write-Host "Publicando..."
-dotnet publish $proyecto -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -v q --nologo
+dotnet publish $proyecto -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -v q --nologo -m:1 -nodeReuse:false
 if ($LASTEXITCODE -ne 0) { throw "Ha fallado el publish." }
 
 $publicado = Join-Path $raiz "bin\Release\net10.0-windows\win-x64\publish"

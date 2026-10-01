@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 
 namespace SocRcManager.Services;
 
@@ -23,7 +23,8 @@ public static class Sandbox
     public const string Variable = "SOC_SANDBOX";
 
 #if DEBUG
-    public static bool IsOn { get; } = Environment.GetEnvironmentVariable(Variable) is { Length: > 0 };
+    /// <summary>Si esta en modo aislado. Lo decide <see cref="Apply()"/>, lo primero al arrancar.</summary>
+    public static bool IsOn { get; private set; }
 #else
     public static bool IsOn => false;
 #endif
@@ -32,12 +33,16 @@ public static class Sandbox
     public static string? Folder { get; private set; }
 
     /// <summary>Al arrancar, antes de leer nada: redirige los datos a la carpeta aislada.</summary>
-    public static void Apply()
-    {
-        if (!IsOn)
-            return;
+    public static void Apply() => Apply(Environment.GetEnvironmentVariable(Variable));
 
-        var value = Environment.GetEnvironmentVariable(Variable)!.Trim();
+    /// <summary>Con el valor de la variable (las pruebas lo pasan directamente). En Release no hace nada.</summary>
+    internal static void Apply(string? value)
+    {
+#if DEBUG
+        if (value is not { Length: > 0 })
+            return;
+        IsOn = true;
+        value = value.Trim();
         Folder = Path.IsPathFullyQualified(value) ? value : Path.Combine(Path.GetTempPath(), "sOCRCManager-sandbox");
         Directory.CreateDirectory(Folder);
 
@@ -49,5 +54,6 @@ public static class Sandbox
         // quitarle el primer plano a quien este trabajando mientras corren las pruebas.
         foreach (var type in typeof(Sandbox).Assembly.GetTypes().Where(t => t.IsSubclassOf(typeof(System.Windows.Window)) && !t.IsAbstract))
             System.Windows.Window.ShowActivatedProperty.OverrideMetadata(type, new System.Windows.FrameworkPropertyMetadata(false));
+#endif
     }
 }

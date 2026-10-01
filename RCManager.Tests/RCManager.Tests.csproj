@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
     Pruebas de la logica de sOC Remote Connections Manager (xUnit). La aplicacion es un solo
     proyecto WPF con la interfaz mezclada: aqui se enlazan solo los ficheros sin interfaz (modelo,
-    importadores, cifrado, almacen, nube, errores, textos, ficheros y el interprete del terminal).
+    importadores, cifrado, almacen, nube, errores, textos, ficheros, el interprete del terminal,
+    argumentos de arranque, instancia unica y colocacion de las ventanas sueltas).
     Ventanas, controles y el control RDP (interop mstscax) no se enlazan ni se prueban.
     Nada toca los datos reales: el almacen, los ajustes y el registro van a carpetas temporales, y
     la nube y OAuth hablan con un HttpMessageHandler falso.
@@ -51,6 +52,11 @@
     <Compile Include="..\Services\Secrets.cs" Link="App\Services\Secrets.cs" />
     <Compile Include="..\Services\Store.cs" Link="App\Services\Store.cs" />
     <Compile Include="..\Services\Vault.cs" Link="App\Services\Vault.cs" />
+    <Compile Include="..\Services\StartupArgs.cs" Link="App\Services\StartupArgs.cs" />
+    <Compile Include="..\Services\SingleInstance.cs" Link="App\Services\SingleInstance.cs" />
+    <Compile Include="..\Services\SessionPlacement.cs" Link="App\Services\SessionPlacement.cs" />
+    <Compile Include="..\Services\Sandbox.cs" Link="App\Services\Sandbox.cs" />
+    <Compile Include="..\Services\ThemeManager.cs" Link="App\Services\ThemeManager.cs" />
     <Compile Include="..\Files\IRemoteFileSystem.cs" Link="App\Files\IRemoteFileSystem.cs" />
     <Compile Include="..\Files\FileSides.cs" Link="App\Files\FileSides.cs" />
     <Compile Include="..\Files\FileRules.cs" Link="App\Files\FileRules.cs" />

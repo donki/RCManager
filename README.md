@@ -1,4 +1,4 @@
-# sOC Remote Connections Manager (sOCRCManager)
+﻿# sOC Remote Connections Manager (sOCRCManager)
 
 Gestor de conexiones **RDP, SSH, SFTP/SCP y FTP/FTPS** para Windows, al estilo de Remote Desktop Manager: un árbol de
 servidores organizados por carpetas a la izquierda, y cada sesión en su pestaña a la derecha.
@@ -41,11 +41,23 @@ servidores organizados por carpetas a la izquierda, y cada sesión en su pestañ
   espera, reintentos; FTP pasivo/activo y codificación. **Editor de texto integrado** (doble clic en
   un fichero de texto del servidor; Ctrl+S guarda en el servidor, Ctrl+F busca, pregunta al cerrar);
   lo demás se abre con el programa por defecto de Windows. En local, doble clic = programa por defecto.
+- **Pestañas sueltas**: una pestaña se saca a su propia ventana arrastrándola fuera (o con su botón
+  de la pestaña o el menú del botón derecho) y vuelve arrastrando la barra de esa ventana sobre la principal (o
+  con su botón, o cerrándola con la X). **La sesión no se reconecta**: el control de la sesión se
+  mueve tal cual de una ventana a otra (el escritorio remoto es el mismo control ActiveX, con la
+  misma ventana nativa). Varias a la vez, cada una en su monitor; cada conexión recuerda dónde
+  estuvo su ventana. Al cerrar la principal se cierran también, preguntando antes (se puede quitar
+  en Ajustes).
+- **Una sola instancia**: abrirla otra vez (desde el exe, el MSIX o un acceso directo) trae al frente
+  la que ya estaba abierta, aunque esté escondida en el área de notificación, y le pasa lo pedido
+  (`--open "Nombre"` abre esa conexión allí). Si la abierta no contesta en un par de segundos, la
+  nueva arranca igual. Si la nueva es de una versión posterior, la vieja le deja el sitio (y, si
+  tiene sesiones abiertas, pregunta antes de cortarlas).
 - **Pantalla completa en el monitor que elijas** y **zoom** por pestaña (letra del terminal y de los
   paneles; escala 100–200 % del escritorio RDP).
 - `sOCRCManager.exe --open "Nombre"` abre esa conexión al arrancar; `--edit "Nombre"` (y `--edit-tab N`)
   abre su editor; `--edit-file "Nombre" "/ruta"` abre ese fichero en el editor; `--size AnchoxAlto`
-  fija el tamaño de la ventana (para capturas).
+  fija el tamaño de la ventana (para capturas); `--tray` arranca escondida en el área de notificación.
 - Si una conexión no tiene contraseña guardada, se pide al conectar, con la opción de recordarla
   (cifrada con DPAPI para el usuario de Windows).
 - **Importar conexiones**: en Ajustes ⚙; de un `.rdm` exportado de Remote Desktop Manager (RDP,
@@ -92,16 +104,25 @@ Framework 4.8 porque MSBuild de .NET Core no resuelve referencias COM.
 
 ## Pruebas
 
-`RCManager.Tests` (xUnit): **330 pruebas** de la lógica sin interfaz (importadores .rdm/.rdp,
+`RCManager.Tests` (xUnit): **399 pruebas** de la lógica sin interfaz (importadores .rdm/.rdp,
 modelo y árbol de carpetas, almacén, ajustes, registro, DPAPI y cifrado de la nube, Google
 Drive/OneDrive y OAuth con un HTTP falso, errores de conexión, textos es/en, permisos rwx,
-chmod/chown, listados FTP, reglas del explorador y el intérprete del terminal), más FTP completo
-contra un servidor FTP falso en 127.0.0.1. Nada toca los datos reales ni sale a la red.
+chmod/chown, listados FTP, reglas del explorador, el intérprete del terminal, argumentos de arranque,
+instancia única —con su mutex y su tubería de verdad: segunda instancia, instancia colgada, versión
+nueva que toma el relevo, mutex abandonado—, colocación de las ventanas sueltas en varios monitores,
+qué hacer al soltar un arrastre, modo aislado y tema), más FTP completo contra un servidor FTP falso
+en 127.0.0.1. Nada toca los datos reales ni sale a la red.
 
-- Cobertura de lo instrumentado (ficheros enlazados): **94,4 %** de líneas.
-- Cobertura sobre toda la app: **43,5 %** (2066 de 4744 líneas ejecutables; la interfaz WPF, el
+- Cobertura de lo instrumentado (ficheros enlazados): **94,0 %** de líneas.
+- Cobertura sobre toda la app: **43,5 %** (2373 de 5458 líneas ejecutables; la interfaz WPF, el
   control RDP y SFTP/SSH contra un servidor no se prueban aquí).
-- Tiempo del banco: **unos 10 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-09-30.
+- Tiempo del banco: **unos 10 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-10-01.
+
+`RCManager.UITests` (FlaUI): **10 pruebas de interfaz** sobre el exe Debug en modo aislado, en
+**unos 17 s**: arranque, Ajustes, crear/editar/borrar una conexión, importar un `.rdp`, idioma,
+«Acerca de», sacar una pestaña a su ventana y devolverla, varias ventanas sueltas al cerrar la
+principal, y la instancia única (segunda instancia con `--open` que trae la primera de la bandeja,
+y arranque con `--tray`). Ver `RCManager.UITests/README.md`.
 
 ```
 dotnet test RCManager.Tests
@@ -119,3 +140,10 @@ dentro (se pide confirmación y queda el `.bak`).
 
 - Probar RDP contra un servidor real (el control de Windows no deja conectar con el propio equipo,
   y en la red de desarrollo no había otro).
+- Sacar a una ventana y devolver una pestaña RDP **conectada** a un servidor real: se ha probado con
+  el control sin conectar (modo aislado), comprobando que es el mismo control con la misma ventana
+  nativa antes, en la ventana suelta y de vuelta; falta verlo con una sesión viva.
+- Devolver una ventana suelta **arrastrando su barra** sobre la principal: el arrastre hacia fuera
+  se probó con el ratón de verdad (modo aislado) y funciona; el de vuelta no se llegó a confirmar con
+  el guion de ratón (se paró para no estorbar en el equipo). Volver con el botón o con la X sí está
+  probado.

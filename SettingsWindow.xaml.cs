@@ -27,6 +27,7 @@ public partial class SettingsWindow : Window
         CloseButton.ToolTip = Loc.Get("Close");
         ImportButton.ToolTip = Loc.Get("ImportTooltip");
         TrayBox.IsChecked = settings.TrayOnMinimize;
+        AskDetachedBox.IsChecked = settings.AskBeforeClosingDetached;
         GoogleButton.IsEnabled = CloudSync.IsAvailable(StorageMode.GoogleDrive);
         OneDriveButton.IsEnabled = CloudSync.IsAvailable(StorageMode.OneDrive);
         Paint();
@@ -171,6 +172,13 @@ public partial class SettingsWindow : Window
     private void OnTrayClick(object sender, RoutedEventArgs e)
     {
         _settings.TrayOnMinimize = TrayBox.IsChecked == true;
+        _settings.Save();
+    }
+
+    /// <summary>Al cerrar la principal con ventanas sueltas: preguntar o cerrarlas sin mas.</summary>
+    private void OnAskDetachedClick(object sender, RoutedEventArgs e)
+    {
+        _settings.AskBeforeClosingDetached = AskDetachedBox.IsChecked == true;
         _settings.Save();
     }
 

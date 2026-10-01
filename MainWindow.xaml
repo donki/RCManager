@@ -78,11 +78,14 @@
                       HorizontalAlignment="Center" VerticalAlignment="Stretch" />
 
         <!-- ============================ Pestañas ============================ -->
-        <!-- Soltar aqui una conexion del arbol la abre. -->
+        <!-- Soltar aqui una conexion del arbol la abre; una pestaña arrastrada fuera sale a su
+             propia ventana, y soltar aqui la barra de esa ventana la devuelve. -->
         <Grid Grid.Row="0" Grid.Column="2" x:Name="TabsArea" AllowDrop="True" Background="Transparent"
               DragOver="OnTabsDragOver" Drop="OnTabsDrop">
             <TabControl x:Name="Tabs" Background="{DynamicResource MirrorBackground}" BorderThickness="0"
-                        Padding="0" SelectionChanged="OnTabChanged">
+                        Padding="0" SelectionChanged="OnTabChanged"
+                        PreviewMouseLeftButtonDown="OnTabsPreviewMouseDown" PreviewMouseMove="OnTabsPreviewMouseMove"
+                        PreviewMouseLeftButtonUp="OnTabsPreviewMouseUp">
                 <TabControl.Resources>
                     <Style TargetType="TabItem" BasedOn="{StaticResource SessionTab}" />
                 </TabControl.Resources>

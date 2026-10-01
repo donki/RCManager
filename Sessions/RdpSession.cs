@@ -111,6 +111,13 @@ public sealed class RdpSession : ISession
             }
         };
         _rdp.OnConnected += (_, _) => _connected = true;
+        // Al sacar la pestaña a su ventana (o devolverla) el control se mueve sin destruirse: si algun
+        // dia se destruyese con la sesion abierta, la sesion se habria cortado. Queda en el registro.
+        _rdp.HandleDestroyed += (_, _) =>
+        {
+            if (_connected && !_closing)
+                AppLog.Write($"RDP {_connection.Name}: el control se ha destruido con la sesion abierta");
+        };
         // El zoom guardado (escala del escritorio) se le pide al servidor al entrar: el no lo
         // recuerda y, sin esto, la sesion se abre siempre al 100 %. Se pide **despues del inicio de
         // sesion**, no al conectar: mientras no hay sesion iniciada el servidor rechaza el cambio de
@@ -325,7 +332,15 @@ public sealed class RdpSession : ISession
 
     public bool HasNativeFullScreen => true;
 
-    public bool IsFullScreen => _rdp.FullScreen;
+    /// <summary>Si esta en pantalla completa. El control lanza si aun no tiene ventana (pestaña nunca vista): entonces no.</summary>
+    public bool IsFullScreen
+    {
+        get
+        {
+            try { return _rdp.IsHandleCreated && _rdp.FullScreen; }
+            catch (Exception) { return false; }
+        }
+    }
 
     public void LeaveFullScreen()
     {

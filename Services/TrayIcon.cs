@@ -41,7 +41,7 @@ public sealed class TrayIcon : IDisposable
         };
     }
 
-    public bool Hidden => _shown && !_window.IsVisible;
+    public bool Hidden => !_window.IsVisible;
 
     /// <summary>Un globo en el area de notificacion (solo tiene sentido con la ventana escondida).</summary>
     public void Notify(string title, string text)
@@ -88,12 +88,16 @@ public sealed class TrayIcon : IDisposable
         _window.Hide();
     }
 
-    public void Restore()
+    /// <summary>De vuelta de la bandeja. Sin <paramref name="activate"/> (modo aislado) no se le quita el foco a nadie.</summary>
+    public void Restore(bool activate = true)
     {
         _window.Show();
         _window.WindowState = WindowState.Normal;
-        _window.Activate();
-        SetForegroundWindow(_hwnd);
+        if (activate)
+        {
+            _window.Activate();
+            SetForegroundWindow(_hwnd);
+        }
         Remove();
     }
 
@@ -112,7 +116,9 @@ public sealed class TrayIcon : IDisposable
 
     private void Add()
     {
-        if (_shown) return;
+        // Modo aislado de pruebas: la ventana se esconde igual, pero sin icono en el area de
+        // notificacion, que es del Windows de verdad (constitucion general 8.4).
+        if (_shown || Sandbox.IsOn) return;
         var data = Data();
         data.uFlags = 0x1 | 0x2 | 0x4;   // NIF_MESSAGE | NIF_ICON | NIF_TIP
         data.uCallbackMessage = WmTray;
@@ -182,67 +188,4 @@ public sealed class TrayIcon : IDisposable
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr LoadIcon(IntPtr instance, IntPtr name);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] private static extern int ExtractIconEx(string file, int index, IntPtr[] large, IntPtr[] small, int count);
-}
-
-/// <summary>«Arrancar con Windows»: una entrada en HKCU\…\Run con el exe y --tray (arranca escondido en la bandeja).</summary>
-public static class WindowsStartup
-{
-    private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "sOCLucia";
-    /// <summary>Nombre de la entrada hasta 2026.9.20.3 (sOC AI Chat); apuntaba a un exe que ya no existe.</summary>
-    private const string OldValueName = "sOCAIChat";
-
-    public static bool IsEnabled()
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
-            if (key is null) return false;
-            if (key.GetValue(OldValueName) is string)
-            {
-                key.DeleteValue(OldValueName, throwOnMissingValue: false);
-                Set(true);
-                return true;
-            }
-            return key.GetValue(ValueName) is string s && s.Length > 0;
-        }
-        catch (Exception) { return false; }
-    }
-
-    /// <summary>
-    /// Al arrancar: si «Arrancar con Windows» esta puesto, la entrada pasa a apuntar a ESTE exe. Asi
-    /// no se queda clavada en una copia vieja (una compilacion de pruebas, una carpeta que ya no
-    /// existe) cuando la aplicacion se mueve o se actualiza. Las compilaciones Debug no tocan nada:
-    /// si no, cada prueba secuestraria el arranque del usuario.
-    /// </summary>
-    public static void Refresh()
-    {
-#if !DEBUG
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey);
-            var current = key?.GetValue(ValueName) as string;
-            if (string.IsNullOrEmpty(current) || Environment.ProcessPath is not { Length: > 0 } exe)
-                return;
-            var wanted = "\"" + exe + "\" --tray";
-            if (!string.Equals(current, wanted, StringComparison.OrdinalIgnoreCase))
-                Set(true);
-        }
-        catch (Exception) { }
-#endif
-    }
-
-    public static void Set(bool enabled)
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
-            if (key is null) return;
-            if (enabled && Environment.ProcessPath is { Length: > 0 } exe)
-                key.SetValue(ValueName, "\"" + exe + "\" --tray");
-            else
-                key.DeleteValue(ValueName, throwOnMissingValue: false);
-        }
-        catch (Exception) { }
-    }
 }

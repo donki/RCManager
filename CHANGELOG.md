@@ -1,5 +1,45 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.10.1.0 — Pestañas en su propia ventana y una sola instancia
+
+- **Sacar una pestaña a su propia ventana** (para tenerla en otro monitor o al lado de otra):
+  arrastrándola fuera de la ventana principal, con el botón nuevo de la pestaña o con el menú del
+  botón derecho. **La sesión no se corta ni se reconecta**: el control se mueve tal cual (en RDP, el
+  mismo control de Escritorio remoto con la misma ventana nativa; WPF lo aparca y lo vuelve a colgar
+  de la ventana nueva, lo mismo que ya pasaba al cambiar de pestaña). La ventana suelta lleva arriba
+  la barra de la pestaña (zoom, pantalla completa, volver y desconectar).
+- **Volver a la ventana principal**: con su botón, arrastrando la barra de la ventana suelta sobre la
+  principal, o cerrándola con la X (que no desconecta). Varias ventanas sueltas a la vez; cada
+  conexión recuerda dónde estuvo la suya (y en qué monitor; si ya no está, sale en la principal). El
+  botón de sesiones abiertas también las lista. Al cerrar la principal se cierran también, y antes
+  pregunta (Ajustes › Ventana › «Preguntar antes de cerrar las ventanas sueltas»).
+- **Una sola instancia** (constitución general 8.3): abrir la aplicación otra vez —desde el exe de
+  OneDrive, el de la Microsoft Store o un acceso directo— trae al frente la que ya estaba, aunque
+  estuviese escondida en el área de notificación, y le pasa lo pedido (`--open "Nombre"` abre esa
+  conexión allí). Antes no había ninguna comprobación y se abrían dos. El exe suelto y el del MSIX
+  se encuentran entre sí (mismo nombre por usuario y sesión de Windows). Si la abierta no contesta en
+  un par de segundos (colgada), la nueva arranca igual. Si la nueva es de una versión posterior, la
+  vieja le deja el sitio; si tiene sesiones abiertas, pregunta antes de cortarlas.
+- **`--tray`** arranca escondida en el área de notificación (antes se ignoraba).
+- La entrega cierra la instancia de OneDrive solo si no tiene sesiones abiertas, la sustituye y la
+  vuelve a abrir comprobando la versión (constitución general 8.3).
+- Por dentro: fuera el código copiado de otra aplicación para «Arrancar con Windows», que no se usaba
+  y habría escrito la entrada de esa otra aplicación. En el modo aislado de pruebas las pestañas se
+  abren con el control de la sesión sin conectar (para probar sacarlas y devolverlas) y la bandeja no
+  pone icono en el Windows de verdad. Pruebas: 399 de lógica (instancia única con la tubería de
+  verdad, argumentos, colocación en varios monitores, decisión del arrastre, modo aislado, tema) y
+  10 de interfaz (sacar y devolver una pestaña comprobando que el control RDP es el mismo, varias
+  sueltas y cerrar la principal, segunda instancia que trae la primera de la bandeja con `--open`, y
+  arrancar con `--tray`).
+
+**English.** Tabs can be moved out to their own window (drag them out, or use the tab's button or
+right-click menu) and back (button, drag the window's bar onto the main window, or close it with the
+X) without the session dropping or reconnecting; several at once, each remembering where it was and
+on which monitor; closing the main window asks first. Single instance: opening the app again (exe,
+Microsoft Store or shortcut) brings the running one to the front, even from the notification area,
+and passes it `--open`; a hung instance does not block a new one, and a newer version takes over.
+`--tray` now starts hidden in the notification area.
+
 ## 2026.9.30.0 — Pruebas automáticas y cinco arreglos que salieron con ellas
 
 - **FTP: «Conservar la fecha» no funcionaba al subir.** La fecha se le daba a la biblioteca de FTP
