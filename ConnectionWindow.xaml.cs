@@ -15,12 +15,6 @@ public partial class ConnectionWindow : Window
 {
     private readonly Connection _connection;
 
-    // Tamaños de la lista de Pantalla, en el mismo orden que los ComboBoxItem (0 = ajustar, ultimo = a medida).
-    private static readonly (int W, int H)[] Sizes =
-    [
-        (0, 0), (1024, 768), (1280, 800), (1366, 768), (1600, 900), (1920, 1080), (1920, 1200), (2560, 1440),
-    ];
-
     public ConnectionWindow(Connection connection, IReadOnlyList<string> folders)
     {
         InitializeComponent();
@@ -33,7 +27,7 @@ public partial class ConnectionWindow : Window
 
         // --- General ---
         NameBox.Text = connection.Name;
-        KindBox.SelectedIndex = connection.Kind switch { ConnectionKind.Ssh => 1, ConnectionKind.Sftp => 2, ConnectionKind.Ftp => 3, _ => 0 };
+        KindBox.SelectedIndex = ConnectionForm.KindIndex(connection.Kind);
         FolderBox.ItemsSource = folders;
         FolderBox.Text = connection.Folder;
         HostBox.Text = connection.Host;
@@ -69,11 +63,10 @@ public partial class ConnectionWindow : Window
         LocalPathBox.Text = connection.LocalPath;
 
         // --- Pantalla ---
-        var size = Array.FindIndex(Sizes, s => s.W == connection.RdpWidth && s.H == connection.RdpHeight);
-        SizeBox.SelectedIndex = connection.RdpSmartSizing && connection.RdpWidth == 0 ? 0 : size > 0 ? size : SizeBox.Items.Count - 1;
+        SizeBox.SelectedIndex = ConnectionForm.SizeIndex(connection.RdpWidth, connection.RdpHeight, connection.RdpSmartSizing);
         WidthBox.Text = connection.RdpWidth > 0 ? connection.RdpWidth.ToString() : string.Empty;
         HeightBox.Text = connection.RdpHeight > 0 ? connection.RdpHeight.ToString() : string.Empty;
-        ColorBox.SelectedIndex = connection.RdpColorDepth switch { 15 => 0, 16 => 1, 24 => 2, _ => 3 };
+        ColorBox.SelectedIndex = ConnectionForm.ColorIndex(connection.RdpColorDepth);
         MultiMonitorBox.IsChecked = connection.RdpMultiMonitor;
         ConnectionBarBox.IsChecked = connection.RdpConnectionBar;
 
@@ -124,9 +117,9 @@ public partial class ConnectionWindow : Window
         }
     }
 
-    private ConnectionKind Kind => KindBox.SelectedIndex switch { 1 => ConnectionKind.Ssh, 2 => ConnectionKind.Sftp, 3 => ConnectionKind.Ftp, _ => ConnectionKind.Rdp };
+    private ConnectionKind Kind => ConnectionForm.KindAt(KindBox.SelectedIndex);
 
-    private static readonly string[] DefaultPorts = ["3389", "22", "21", "990"];
+    private int DefaultPort() => ConnectionForm.DefaultPort(Kind, Math.Max(0, FtpsBox.SelectedIndex));
 
     private void OnKindChanged(object sender, RoutedEventArgs e)
     {
@@ -134,46 +127,45 @@ public partial class ConnectionWindow : Window
             return;
 
         // Al cambiar de tipo, el puerto por defecto sigue al tipo si el usuario no lo habia tocado.
-        if (DefaultPorts.Contains(PortBox.Text) || PortBox.Text.Length == 0)
-            PortBox.Text = DefaultPort().ToString();
+        FollowDefaultPort();
         ShowKindFields();
     }
-
-    private int DefaultPort() => Kind switch
-    {
-        ConnectionKind.Ssh or ConnectionKind.Sftp => 22,
-        ConnectionKind.Ftp => FtpsBox.SelectedIndex == 2 ? 990 : 21,
-        _ => 3389,
-    };
 
     private void OnFtpsChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded)
             return;
         // FTPS implicito va por el 990; al volver a explicito o sin cifrar, al 21.
-        if (DefaultPorts.Contains(PortBox.Text) || PortBox.Text.Length == 0)
+        FollowDefaultPort();
+    }
+
+    private void FollowDefaultPort()
+    {
+        if (ConnectionForm.PortFollowsKind(PortBox.Text))
             PortBox.Text = DefaultPort().ToString();
     }
 
-    /// <summary>Solo RDP tiene las pestañas de mstsc; SSH y SFTP llevan clave privada; FTP el modo FTPS.</summary>
+    private static Visibility Shown(bool visible) => visible ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Lo que se ve segun el tipo (<see cref="ConnectionForm.FieldsFor"/>).</summary>
     private void ShowKindFields()
     {
         var kind = Kind;
-        var rdp = kind == ConnectionKind.Rdp;
-        var ssh = kind is ConnectionKind.Ssh or ConnectionKind.Sftp;
-        var files = kind is ConnectionKind.Sftp or ConnectionKind.Ftp;
-        SshPanel.Visibility = ssh ? Visibility.Visible : Visibility.Collapsed;
-        DomainPanel.Visibility = rdp ? Visibility.Visible : Visibility.Collapsed;
-        FtpPanel.Visibility = kind == ConnectionKind.Ftp ? Visibility.Visible : Visibility.Collapsed;
-        FilesPanel.Visibility = files ? Visibility.Visible : Visibility.Collapsed;
-        ScpBox.Visibility = kind == ConnectionKind.Sftp ? Visibility.Visible : Visibility.Collapsed;
+        var fields = ConnectionForm.FieldsFor(kind);
+        SshPanel.Visibility = Shown(fields.Ssh);
+        DomainPanel.Visibility = Shown(fields.Domain);
+        FtpPanel.Visibility = Shown(fields.Ftp);
+        FilesPanel.Visibility = Shown(fields.Files);
+        ScpBox.Visibility = Shown(fields.Scp);
         foreach (var tab in new[] { DisplayTab, ResourcesTab, ExperienceTab, AdvancedTab })
-            tab.Visibility = rdp ? Visibility.Visible : Visibility.Collapsed;
-        TransfersTab.Visibility = files ? Visibility.Visible : Visibility.Collapsed;
-        FtpOptionsPanel.Visibility = kind == ConnectionKind.Ftp ? Visibility.Visible : Visibility.Collapsed;
-        if (!rdp && !files)
-            Sections.SelectedItem = GeneralTab;
-        else if (rdp && ReferenceEquals(Sections.SelectedItem, TransfersTab) || files && !ReferenceEquals(Sections.SelectedItem, GeneralTab) && !ReferenceEquals(Sections.SelectedItem, TransfersTab))
+            tab.Visibility = Shown(fields.RdpTabs);
+        TransfersTab.Visibility = Shown(fields.Transfers);
+        FtpOptionsPanel.Visibility = Shown(fields.Ftp);
+
+        var selected = ReferenceEquals(Sections.SelectedItem, GeneralTab) ? ConnectionForm.Tab.General
+            : ReferenceEquals(Sections.SelectedItem, TransfersTab) ? ConnectionForm.Tab.Transfers
+            : ConnectionForm.Tab.Rdp;
+        if (ConnectionForm.BackToGeneral(kind, selected))
             Sections.SelectedItem = GeneralTab;
     }
 
@@ -181,15 +173,15 @@ public partial class ConnectionWindow : Window
     {
         if (CustomSizePanel is null)
             return;
-        CustomSizePanel.Visibility = SizeBox.SelectedIndex == SizeBox.Items.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
+        CustomSizePanel.Visibility = Shown(SizeBox.SelectedIndex == ConnectionForm.CustomSizeIndex);
     }
 
     private void OnGatewayChanged(object sender, RoutedEventArgs e)
     {
         if (GatewayPanel is null || GatewayCredsPanel is null)
             return;
-        GatewayPanel.Visibility = GatewayModeBox.SelectedIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
-        GatewayCredsPanel.Visibility = GatewaySameBox.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
+        GatewayPanel.Visibility = Shown(GatewayModeBox.SelectedIndex > 0);
+        GatewayCredsPanel.Visibility = Shown(GatewaySameBox.IsChecked != true);
     }
 
     private void OnBrowseClick(object sender, RoutedEventArgs e)
@@ -209,18 +201,32 @@ public partial class ConnectionWindow : Window
             return;
         }
 
+        // El tamaño a medida se comprueba antes de tocar nada: si esta mal, la conexion queda como estaba.
+        (int W, int H)? customSize = null;
+        if (SizeBox.SelectedIndex == ConnectionForm.CustomSizeIndex)
+        {
+            customSize = ConnectionForm.ParseCustomSize(WidthBox.Text, HeightBox.Text);
+            if (customSize is null)
+            {
+                StatusText.Text = Loc.Get("RdpSizeInvalid");
+                Sections.SelectedItem = DisplayTab;
+                return;
+            }
+        }
+
         var c = _connection;
+        var kind = Kind;
 
         // --- General ---
         c.Name = name;
-        c.Kind = Kind;
+        c.Kind = kind;
         c.Folder = (FolderBox.Text ?? string.Empty).Trim().Trim('/');
         c.Host = host;
-        c.Port = int.TryParse(PortBox.Text.Trim(), out var port) && port is > 0 and < 65536 ? port : c.DefaultPort;
+        c.Port = ConnectionForm.ParsePort(PortBox.Text, DefaultPort());
         c.UserName = UserBox.Text.Trim();
         c.Domain = DomainBox.Text.Trim();
         c.PasswordProtected = Secrets.Protect(PasswordBox.Password);
-        c.PrivateKeyPath = Kind is ConnectionKind.Ssh or ConnectionKind.Sftp ? KeyBox.Text.Trim() : string.Empty;
+        c.PrivateKeyPath = ConnectionForm.FieldsFor(kind).Ssh ? KeyBox.Text.Trim() : string.Empty;
         c.Notes = NotesBox.Text.Trim();
 
         // --- Pantalla completa / transferencias ---
@@ -230,42 +236,22 @@ public partial class ConnectionWindow : Window
         c.TransferOnConflict = Math.Max(0, ConflictBox.SelectedIndex);
         c.TransferPreserveTimes = PreserveTimesBox.IsChecked == true;
         c.FilesShowHidden = ShowHiddenBox.IsChecked == true;
-        c.FilesKeepAliveSeconds = int.TryParse(KeepAliveBox.Text.Trim(), out var ka) && ka >= 0 ? ka : 30;
-        c.FilesTimeoutSeconds = int.TryParse(TimeoutBox.Text.Trim(), out var to) && to >= 5 ? to : 20;
+        c.FilesKeepAliveSeconds = ConnectionForm.ParseKeepAlive(KeepAliveBox.Text);
+        c.FilesTimeoutSeconds = ConnectionForm.ParseTimeout(TimeoutBox.Text);
         c.FtpPassive = FtpModeBox.SelectedIndex != 1;
         c.FtpUtf8 = FtpEncodingBox.SelectedIndex != 1;
 
         // --- Ficheros ---
-        c.FtpsMode = Kind == ConnectionKind.Ftp ? Math.Max(0, FtpsBox.SelectedIndex) : 0;
-        c.UseScp = Kind == ConnectionKind.Sftp && ScpBox.IsChecked == true;
+        c.FtpsMode = kind == ConnectionKind.Ftp ? Math.Max(0, FtpsBox.SelectedIndex) : 0;
+        c.UseScp = kind == ConnectionKind.Sftp && ScpBox.IsChecked == true;
         c.RemotePath = RemotePathBox.Text.Trim();
         c.LocalPath = LocalPathBox.Text.Trim();
 
         // --- Pantalla ---
-        if (SizeBox.SelectedIndex == 0)
-        {
-            c.RdpSmartSizing = true;
-            c.RdpWidth = c.RdpHeight = 0;
-        }
-        else
-        {
-            c.RdpSmartSizing = false;
-            if (SizeBox.SelectedIndex == SizeBox.Items.Count - 1)
-            {
-                if (!int.TryParse(WidthBox.Text.Trim(), out var w) || !int.TryParse(HeightBox.Text.Trim(), out var h) || w < 200 || h < 200)
-                {
-                    StatusText.Text = Loc.Get("RdpSizeInvalid");
-                    Sections.SelectedItem = DisplayTab;
-                    return;
-                }
-                (c.RdpWidth, c.RdpHeight) = (w, h);
-            }
-            else
-            {
-                (c.RdpWidth, c.RdpHeight) = Sizes[SizeBox.SelectedIndex];
-            }
-        }
-        c.RdpColorDepth = ColorBox.SelectedIndex switch { 0 => 15, 1 => 16, 2 => 24, _ => 32 };
+        // Ajustar a la ventana (0), uno de la lista o a medida.
+        c.RdpSmartSizing = SizeBox.SelectedIndex <= 0;
+        (c.RdpWidth, c.RdpHeight) = customSize ?? ConnectionForm.Sizes[Math.Max(0, SizeBox.SelectedIndex)];
+        c.RdpColorDepth = ConnectionForm.ColorDepthAt(ColorBox.SelectedIndex);
         c.RdpMultiMonitor = MultiMonitorBox.IsChecked == true;
         c.RdpConnectionBar = ConnectionBarBox.IsChecked == true;
 
