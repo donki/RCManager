@@ -9,7 +9,8 @@ Como se cuenta (las mismas reglas para todos los ficheros .cs de la app):
     --excluir.
   - Solo cuentan las lineas con SENTENCIAS (lo que coverlet llama puntos de secuencia). No cuentan:
     lineas vacias, comentarios, directivas (#if), llaves y parentesis sueltos, using/namespace,
-    atributos [..], constantes, campos sin inicializar, firmas de metodos y propiedades (incluidas sus
+    atributos [..] (tambien los partidos en varias lineas), constantes (tambien partidas en varias
+    lineas), campos sin inicializar, firmas de metodos y propiedades (incluidas sus
     listas de parametros partidas en varias lineas), `else`, `try`, `finally`, `case X:`, y todo lo
     que hay dentro de las interfaces y de los enum.
   - Fichero que compila el banco de pruebas (sale en el informe de coverlet): sus lineas ejecutables
@@ -103,9 +104,20 @@ def ejecutables(path):
     stack = []            # por cada '{' abierta: 'iface', 'enum' u 'other'
     pending = None        # tipo de la ultima declaracion de tipo, a la espera de su '{'
     sig_depth = 0         # >0: dentro de los parametros de una firma partida en varias lineas
+    attr_depth = 0        # >0: dentro de un atributo [..] partido en varias lineas
+    in_const = False      # continuacion de una constante partida en varias lineas
     cls_name = None
     for i, code in limpiar(lines):
         if not code or code.startswith('#'):
+            continue
+        if attr_depth > 0:
+            attr_depth += code.count('[') - code.count(']')
+            continue
+        if in_const:
+            in_const = not code.endswith(';')
+            continue
+        if code.startswith('[') and code.count('[') > code.count(']'):
+            attr_depth = code.count('[') - code.count(']')
             continue
         inside = stack[-1] if stack else 'other'
         m = TYPEDECL.match(code)
@@ -130,6 +142,7 @@ def ejecutables(path):
             stmt = '(' in code and m.group(1) != 'interface'
         elif CONST.match(code):
             stmt = False
+            in_const = not code.endswith(';')
         elif KEYWORD.match(code):
             stmt = True
         elif re.match(r'^' + MODS + r'+[^=(]*=(?!>)', code):

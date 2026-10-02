@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -12,9 +12,9 @@
     <RootNamespace>SocRcManager</RootNamespace>
     <AssemblyName>sOCRCManager</AssemblyName>
     <ApplicationTitle>sOC Remote Connections Manager</ApplicationTitle>
-    <Version>2026.10.1.0</Version>
-    <AssemblyVersion>2026.10.1.0</AssemblyVersion>
-    <FileVersion>2026.10.1.0</FileVersion>
+    <Version>2026.10.3.0</Version>
+    <AssemblyVersion>2026.10.3.0</AssemblyVersion>
+    <FileVersion>2026.10.3.0</FileVersion>
     <Product>sOC Remote Connections Manager</Product>
     <Company>Socratic</Company>
     <Copyright>Copyright Â© 2026 Socratic</Copyright>
@@ -61,7 +61,7 @@
     </Reference>
 
     <!-- SSH (MIT). -->
-    <PackageReference Include="SSH.NET" Version="2025.0.0" />
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
   </ItemGroup>
 
   <!-- Las pruebas (RCManager.Tests) llegan a lo interno: controles con nombre, costuras de prueba. -->

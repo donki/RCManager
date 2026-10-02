@@ -59,6 +59,13 @@ public static class Ui
         // Ninguna ventana de la aplicacion se activa al abrirse (como el modo aislado).
         dispatcher!.Invoke(Sandbox.QuietWindows);
 
+        InstallHooks();
+        return dispatcher;
+    }
+
+    /// <summary>Las puertas de Dialogs en modo prueba (tambien al acabar cada prueba, por si una las cambio).</summary>
+    private static void InstallHooks()
+    {
         Dialogs.ShowModal = w =>
         {
             Hide(w);
@@ -75,7 +82,6 @@ public static class Ui
         Dialogs.PickFiles = (_, _, _) => PickedFiles;
         Dialogs.Start = psi => Started.Add(psi);
         Dialogs.SystemMessage = (_, text, title) => Messages.Add((title, text));
-        return dispatcher;
     }
 
     /// <summary>Lo ultimo que fallo en el hilo de interfaz sin que nadie lo recogiera.</summary>
@@ -253,12 +259,16 @@ public static class Ui
         {
             foreach (var w in Application.Current?.Windows.OfType<Window>().ToList() ?? [])
             {
+                // Las ventanas sueltas, al cerrarse con la X, piden volver a la principal en vez de cerrarse.
+                if (w is SessionWindow session)
+                    session.ForceClose = true;
                 try { w.Close(); } catch (Exception) { }
             }
         });
         // Las ventanas se apuntan al cambio de idioma (estatico) y no se borran: que una prueba que
         // cambie el idioma desde otro hilo no llame a ventanas de pruebas anteriores.
         typeof(Localization.Loc).GetField("LanguageChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.SetValue(null, null);
+        InstallHooks();
         ClearAnswers();
         Shown.Clear();
         Started.Clear();

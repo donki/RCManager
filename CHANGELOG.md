@@ -1,5 +1,43 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.10.3.0 — Pruebas de toda la aplicación (99 %) y los arreglos que salieron con ellas
+
+- **Cerrar una pestaña FTP podía colgar la aplicación**: la desconexión esperaba a la biblioteca de
+  FTP en el hilo de la ventana, que era el mismo que esa biblioteca necesitaba para acabar. Ahora la
+  desconexión va fuera de ese hilo.
+- **Explorador de ficheros:** «Transferencia terminada» (o el error) ya no lo tapa un aviso de
+  progreso que llegaba tarde; tras borrar o cambiar permisos, el resultado ya no lo tapa la cuenta
+  de elementos al volver a listar.
+- **Editor de texto:** buscar hacia atrás con el cursor justo después de la primera aparición se la
+  saltaba y daba la vuelta al final.
+- **SFTP:** al cerrar, el cliente se libera aunque la desconexión falle.
+- **Terminal:** un trozo seleccionado dentro de un texto del mismo color no se resaltaba.
+- **Editor de conexiones:** un tamaño a medida mal escrito ya no deja la conexión a medio guardar, y
+  un puerto mal escrito cae al de lo elegido en la ventana (FTPS implícito: 990), no al del tipo que
+  tenía antes.
+- **Nube y Ajustes:** un fallo inmediato (por ejemplo, sin cuenta) ya no lo tapa «Sincronizando…».
+- **Pantalla completa:** al cambiar de sesión con el menú de sesiones, la pestaña que estaba activa
+  ya no se queda sin cabecera al salir.
+- **Área de notificación:** «Salir» del icono con ventanas sueltas ya no da un error; arrancar con
+  `--tray` y a la vez `--open` o `--edit` ya no falla al pedir la contraseña o abrir el editor.
+- **SSH.NET 2026.0.0** (antes 2025.0.0, con dos avisos de seguridad de gravedad alta).
+- Por dentro: el banco de pruebas referencia la aplicación entera y maneja sus ventanas en un hilo
+  propio, fuera de la pantalla y sin activarlas; el control RDP, SSH.NET, SFTP, el icono de la
+  bandeja, los monitores y el ratón van detrás de interfaces con un doble en las pruebas (sin
+  conectar a nada); las reglas del editor de conexiones, del terminal y de las transferencias, en
+  clases propias. 961 pruebas; cobertura de toda la aplicación del 46 % al 99,4 %.
+
+**English.** Whole-app test bench (961 tests, 99.4 % line coverage of the app) and the fixes it
+found: closing an FTP tab could freeze the app; the file browser's "transfer finished" or error
+message was hidden by late progress updates; searching backwards in the text editor skipped the first
+match; the SFTP client is released even if disconnecting fails; selected text of the same colour was
+not highlighted in the terminal; a bad custom size or port in the connection editor no longer leaves
+the connection half-saved or falls back to the old type's port; an immediate cloud failure is no
+longer hidden by "Syncing…"; leaving full screen after switching sessions no longer leaves the
+previous tab without a header; "Exit" from the tray icon with detached windows and `--tray` together
+with `--open`/`--edit` no longer fail. SSH.NET updated to 2026.0.0 (two high-severity advisories in
+2025.0.0).
+
 ## 2026.10.1.0 — Pestañas en su propia ventana y una sola instancia
 
 - **Sacar una pestaña a su propia ventana** (para tenerla en otro monitor o al lado de otra):

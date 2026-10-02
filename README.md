@@ -104,19 +104,36 @@ Framework 4.8 porque MSBuild de .NET Core no resuelve referencias COM.
 
 ## Pruebas
 
-`RCManager.Tests` (xUnit): **399 pruebas** de la lógica sin interfaz (importadores .rdm/.rdp,
-modelo y árbol de carpetas, almacén, ajustes, registro, DPAPI y cifrado de la nube, Google
-Drive/OneDrive y OAuth con un HTTP falso, errores de conexión, textos es/en, permisos rwx,
-chmod/chown, listados FTP, reglas del explorador, el intérprete del terminal, argumentos de arranque,
-instancia única —con su mutex y su tubería de verdad: segunda instancia, instancia colgada, versión
-nueva que toma el relevo, mutex abandonado—, colocación de las ventanas sueltas en varios monitores,
-qué hacer al soltar un arrastre, modo aislado y tema), más FTP completo contra un servidor FTP falso
-en 127.0.0.1. Nada toca los datos reales ni sale a la red.
+`RCManager.Tests` (xUnit): **961 pruebas**, todas en verde. Referencian la aplicación entera y
+prueban la lógica (importadores .rdm/.rdp, modelo y árbol, almacén, ajustes, DPAPI y cifrado de la
+nube, Google Drive/OneDrive y OAuth con un HTTP falso, errores de conexión, textos es/en, permisos,
+FTP contra un servidor FTP falso en 127.0.0.1, SFTP/SCP contra uno en memoria, el intérprete y las
+teclas del terminal, instancia única con su tubería de verdad, colocación de ventanas sueltas) y
+también **las ventanas y controles**: la principal (árbol, búsqueda, arrastrar y soltar, sesiones,
+pantalla completa, sacar y devolver pestañas, bandeja, arranque y otra instancia), el editor de
+conexiones, Ajustes, Acerca de, los diálogos, el explorador de dos paneles, el editor de texto,
+permisos, el terminal y la ventana suelta. Se manejan en un hilo STA propio, abiertas fuera de la
+pantalla y sin activarse (`RCManager.Tests/UiThread.cs`); las modales las contesta la prueba. El
+control RDP (el de Windows, creado de verdad pero **nunca conectado**), SSH.NET, SFTP, el icono de la
+bandeja, los monitores y el ratón van detrás de interfaces con un doble. Nada toca los datos reales,
+el registro, la nube ni ningún servidor (solo 127.0.0.1).
 
-- Cobertura de lo instrumentado (ficheros enlazados): **94,0 %** de líneas.
-- Cobertura sobre toda la app: **43,5 %** (2373 de 5458 líneas ejecutables; la interfaz WPF, el
-  control RDP y SFTP/SSH contra un servidor no se prueban aquí).
-- Tiempo del banco: **unos 10 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-10-01.
+- Cobertura de lo instrumentado (`sOCRCManager.dll`, ReportGenerator): **99,3 %** de líneas.
+- Cobertura sobre toda la app: **99,4 %** (4893 de 4924 líneas ejecutables en 57 ficheros `.cs`).
+  Lo que queda sin cubrir es el pegamento con Windows que no se puede ejecutar en una prueba sin
+  efectos fuera: `Shell_NotifyIcon` y el menú de la bandeja, conectar SSH de verdad, `Connect()`
+  del control RDP, el diálogo de abrir ficheros del sistema y poco más.
+- Tiempo del banco: **unos 67 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-10-03.
+
+**Cómo se cuenta «toda la app»** (`tools/cobertura-app.py <carpeta-de-resultados> --app . --detalle`):
+todos los `.cs` de la app, fuera de `obj/`, `bin/`, `*.g.cs`, `*.Designer.cs` y los proyectos de
+pruebas. En lo que compila el banco (hoy, todo), cuentan las líneas que marca coverlet —que se ejecuta
+**sin** excluir `CompilerGeneratedAttribute`, así que lambdas y métodos async cuentan; solo se excluye
+`GeneratedCodeAttribute` (el `InitializeComponent` de las XAML)— quitando las de llaves sueltas. Lo
+que el banco no compilase contaría entero como no cubierto, y solo sus sentencias: sin llaves
+sueltas, `using`, declaraciones sin cuerpo como `static extern`, atributos, interfaces ni
+comentarios. Por eso la cifra de toda la app puede salir unas décimas por encima de la de
+ReportGenerator, que sí cuenta las llaves.
 
 `RCManager.UITests` (FlaUI): **10 pruebas de interfaz** sobre el exe Debug en modo aislado, en
 **unos 17 s**: arranque, Ajustes, crear/editar/borrar una conexión, importar un `.rdp`, idioma,
@@ -129,6 +146,7 @@ dotnet test RCManager.Tests
 dotnet test RCManager.Tests --collect:"XPlat Code Coverage" --settings RCManager.Tests\coverage.runsettings
 dotnet tool restore
 dotnet tool run reportgenerator -reports:RCManager.Tests\TestResults\*\coverage.cobertura.xml -targetdir:cobertura -reporttypes:TextSummary
+python tools\cobertura-app.py RCManager.Tests\TestResults --app . --detalle
 ```
 
 ## Qué puede romper

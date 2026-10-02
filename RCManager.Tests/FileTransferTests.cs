@@ -1,4 +1,4 @@
-using SocRcManager.Files;
+﻿using SocRcManager.Files;
 using SocRcManager.Localization;
 using SocRcManager.Models;
 
@@ -32,14 +32,14 @@ public sealed class FileTransferTests : IDisposable
             _reports.Add(p);
     }
 
-    /// <summary>El progreso llega por Progress (en otro hilo): se espera a que cuadre.</summary>
+    /// <summary>El progreso llega por Progress (en el grupo de hilos, sin orden garantizado): se espera a que llegue uno que cuadre.</summary>
     private void WaitReportsUntil(Func<TransferProgress, bool> last)
     {
         var until = DateTime.UtcNow.AddSeconds(5);
         while (true)
         {
             lock (_reports)
-                if (_reports.Count > 0 && last(_reports[^1]))
+                if (_reports.Any(last))
                     return;
             if (DateTime.UtcNow > until)
                 throw new TimeoutException("El progreso no llego: " + string.Join(" | ", _reports.Select(r => $"{r.Name} {r.Done}/{r.Total}")));
