@@ -37,6 +37,11 @@ public sealed class ConflictWindow : Window
         var overwrite = new Button { Style = (Style)FindResource("OutlineButton"), Content = Loc.Get("ConflictOverwrite"), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
         overwrite.Click += (_, _) => { _answer = new Answer(true, all.IsChecked == true, false); DialogResult = true; };
         var cancel = new Button { Style = (Style)FindResource("GhostIconButton"), Content = "", ToolTip = Loc.Get("FilesCancel"), IsCancel = true };
+        // Para las pruebas de interfaz: botones y casilla por su AutomationId.
+        System.Windows.Automation.AutomationProperties.SetAutomationId(all, "ApplyAllCheck");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(skip, "SkipButton");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(overwrite, "OverwriteButton");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(cancel, "CancelButton");
         buttons.Children.Add(skip);
         buttons.Children.Add(overwrite);
         buttons.Children.Add(cancel);
