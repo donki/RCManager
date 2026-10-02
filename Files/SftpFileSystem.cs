@@ -12,15 +12,17 @@ namespace SocRcManager.Files;
 /// </summary>
 public sealed class SftpFileSystem : IRemoteFileSystem
 {
-    private readonly SftpClient _sftp;
-    private readonly ScpClient? _scp;
+    private readonly ISftpClient _sftp;
+    private readonly IScpChannel? _scp;
     private readonly Connection _connection;
     private readonly string _password;
+    private readonly SshClients _clients;
 
-    private SftpFileSystem(Connection connection, string password, SftpClient sftp, ScpClient? scp)
+    private SftpFileSystem(Connection connection, string password, SshClients clients, ISftpClient sftp, IScpChannel? scp)
     {
         _connection = connection;
         _password = password;
+        _clients = clients;
         _sftp = sftp;
         _scp = scp;
         InitialDirectory = sftp.WorkingDirectory;
@@ -48,12 +50,10 @@ public sealed class SftpFileSystem : IRemoteFileSystem
             return;
         }
 
-        using var ssh = new SshClient(SshAuth.Build(_connection, _password));
-        ssh.Connect();
         var spec = group.Length > 0 ? $"{owner}:{group}" : owner;
-        using var cmd = ssh.RunCommand($"chown {Quote(spec)} {Quote(path)}");
-        if (cmd.ExitStatus != 0)
-            throw new IOException(cmd.Error.Trim().Length > 0 ? cmd.Error.Trim() : $"chown: {cmd.ExitStatus}");
+        var (status, error) = _clients.Run(SshAuth.Build(_connection, _password), $"chown {Quote(spec)} {Quote(path)}");
+        if (status != 0)
+            throw new IOException(error.Trim().Length > 0 ? error.Trim() : $"chown: {status}");
     }, cancellationToken);
 
     /// <summary>Entre comillas simples para el shell (una comilla dentro se cierra, se escapa y se reabre).</summary>
@@ -61,22 +61,25 @@ public sealed class SftpFileSystem : IRemoteFileSystem
 
     public string InitialDirectory { get; }
 
-    public static async Task<SftpFileSystem> ConnectAsync(Connection connection, string password, CancellationToken cancellationToken)
+    public static Task<SftpFileSystem> ConnectAsync(Connection connection, string password, CancellationToken cancellationToken) =>
+        ConnectAsync(connection, password, SshClients.Real, cancellationToken);
+
+    /// <summary>Lo mismo con los clientes que se le den (los de verdad o, en las pruebas, dobles).</summary>
+    internal static async Task<SftpFileSystem> ConnectAsync(Connection connection, string password, SshClients clients, CancellationToken cancellationToken)
     {
-        var info = SshAuth.Build(connection, password);
-        var sftp = new SftpClient(info);
+        var sftp = clients.Sftp(SshAuth.Build(connection, password));
         sftp.OperationTimeout = TimeSpan.FromSeconds(Math.Max(5, connection.FilesTimeoutSeconds));
         if (connection.FilesKeepAliveSeconds > 0)
             sftp.KeepAliveInterval = TimeSpan.FromSeconds(connection.FilesKeepAliveSeconds);
         await Task.Run(sftp.Connect, cancellationToken);
 
-        ScpClient? scp = null;
+        IScpChannel? scp = null;
         if (connection.UseScp)
         {
-            scp = new ScpClient(SshAuth.Build(connection, password));
+            scp = clients.Scp(SshAuth.Build(connection, password));
             await Task.Run(scp.Connect, cancellationToken);
         }
-        return new SftpFileSystem(connection, password, sftp, scp);
+        return new SftpFileSystem(connection, password, clients, sftp, scp);
     }
 
     public Task<IReadOnlyList<FileEntry>> ListAsync(string path, CancellationToken cancellationToken) => Task.Run(() =>
@@ -161,8 +164,43 @@ public sealed class SftpFileSystem : IRemoteFileSystem
 
     public void Dispose()
     {
-        try { _scp?.Disconnect(); _scp?.Dispose(); } catch (Exception) { }
-        try { _sftp.Disconnect(); _sftp.Dispose(); } catch (Exception) { }
+        // Se liberan aunque la desconexion falle (la conexion ya rota no debe dejar el cliente vivo).
+        try { _scp?.Disconnect(); } catch (Exception) { }
+        try { _scp?.Dispose(); } catch (Exception) { }
+        try { _sftp.Disconnect(); } catch (Exception) { }
+        try { _sftp.Dispose(); } catch (Exception) { }
+    }
+}
+
+/// <summary>SCP: lo que se usa de <see cref="ScpClient"/>, para poder sustituirlo en las pruebas.</summary>
+public interface IScpChannel : IDisposable
+{
+    event EventHandler<Renci.SshNet.Common.ScpDownloadEventArgs>? Downloading;
+    event EventHandler<Renci.SshNet.Common.ScpUploadEventArgs>? Uploading;
+    void Connect();
+    void Disconnect();
+    void Download(string filename, Stream destination);
+    void Upload(Stream source, string path);
+}
+
+/// <summary>El <see cref="ScpClient"/> de verdad ya tiene todo lo de <see cref="IScpChannel"/>.</summary>
+internal sealed class ScpChannel(ConnectionInfo info) : ScpClient(info), IScpChannel;
+
+/// <summary>
+/// Como se crean los clientes SSH: SFTP, SCP y una orden suelta por SSH (chown). Los de verdad
+/// estan en <see cref="Real"/>; las pruebas dan los suyos y nunca tocan un servidor.
+/// </summary>
+internal sealed record SshClients(Func<ConnectionInfo, ISftpClient> Sftp, Func<ConnectionInfo, IScpChannel> Scp, Func<ConnectionInfo, string, (int Status, string Error)> Run)
+{
+    public static readonly SshClients Real = new(info => new SftpClient(info), info => new ScpChannel(info), RunCommand);
+
+    /// <summary>Una orden por SSH con su propia conexion: codigo de salida y lo que dijo por la salida de error.</summary>
+    internal static (int Status, string Error) RunCommand(ConnectionInfo info, string command)
+    {
+        using var ssh = new SshClient(info);
+        ssh.Connect();
+        using var cmd = ssh.RunCommand(command);
+        return (cmd.ExitStatus ?? -1, cmd.Error);
     }
 }
 
