@@ -174,7 +174,7 @@ public sealed class FtpFileSystem : IRemoteFileSystem
     public void Dispose()
     {
         _keepAlive?.Dispose();
-        try { _ftp.Disconnect().GetAwaiter().GetResult(); } catch (Exception) { }
+        try { Task.Run(() => _ftp.Disconnect()).GetAwaiter().GetResult(); } catch (Exception) { }   // fuera del hilo de interfaz: ahi se colgaba al cerrar
         _ftp.Dispose();
     }
 }

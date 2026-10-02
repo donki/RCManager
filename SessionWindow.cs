@@ -90,28 +90,9 @@ public sealed class SessionWindow : Window
 
         // Con el raton capturado: un movimiento rapido saca el puntero de la barra (hacia la barra de
         // titulo, que no es de WPF) antes de pasar el umbral del arrastre.
-        _bar.PreviewMouseLeftButtonDown += (_, e) =>
-        {
-            _dragStart = e.OriginalSource is DependencyObject d && IsInButton(d) ? null : e.GetPosition(this);
-            if (_dragStart is not null)
-                _bar.CaptureMouse();
-        };
-        _bar.PreviewMouseMove += (_, e) =>
-        {
-            if (_dragStart is not { } start || e.LeftButton != MouseButtonState.Pressed)
-                return;
-            var delta = e.GetPosition(this) - start;
-            if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
-                return;
-            _dragStart = null;
-            _bar.ReleaseMouseCapture();
-            BarDragStarted?.Invoke();
-        };
-        _bar.PreviewMouseLeftButtonUp += (_, _) =>
-        {
-            _dragStart = null;
-            _bar.ReleaseMouseCapture();
-        };
+        _bar.PreviewMouseLeftButtonDown += (_, e) => BarPressed(e.OriginalSource as DependencyObject, e.GetPosition(this));
+        _bar.PreviewMouseMove += (_, e) => BarMoved(e.GetPosition(this), e.LeftButton == MouseButtonState.Pressed);
+        _bar.PreviewMouseLeftButtonUp += (_, _) => BarReleased();
 
         Closing += (_, e) =>
         {
@@ -124,6 +105,36 @@ public sealed class SessionWindow : Window
     }
 
     private Point? _dragStart;
+
+    /// <summary>La barra de arriba (asa y cabecera).</summary>
+    internal Border Bar => _bar;
+
+    /// <summary>Pulsar en la barra (fuera de sus botones) prepara el arrastre.</summary>
+    internal void BarPressed(DependencyObject? source, Point position)
+    {
+        _dragStart = source is not null && IsInButton(source) ? null : position;
+        if (_dragStart is not null)
+            _bar.CaptureMouse();
+    }
+
+    /// <summary>Mover con el boton pulsado: pasado el umbral del sistema, empieza el arrastre.</summary>
+    internal void BarMoved(Point position, bool pressed)
+    {
+        if (_dragStart is not { } start || !pressed)
+            return;
+        var delta = position - start;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+        _dragStart = null;
+        _bar.ReleaseMouseCapture();
+        BarDragStarted?.Invoke();
+    }
+
+    internal void BarReleased()
+    {
+        _dragStart = null;
+        _bar.ReleaseMouseCapture();
+    }
 
     private static bool IsInButton(DependencyObject d)
     {
@@ -217,20 +228,29 @@ public sealed class SessionWindow : Window
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
-        if (e.Key == Key.F11 || (e.Key == Key.Escape && _fullScreen && (Keyboard.Modifiers & ModifierKeys.Control) != 0))
-        {
-            FullScreenToggleRequested?.Invoke();
+        if (HandleKey(e.Key, Keyboard.Modifiers))
             e.Handled = true;
-        }
+    }
+
+    /// <summary>F11, o Ctrl+Esc ya en pantalla completa: pide cambiarla. Devuelve si la tecla se ha usado.</summary>
+    internal bool HandleKey(Key key, ModifierKeys modifiers)
+    {
+        if (key != Key.F11 && !(key == Key.Escape && _fullScreen && (modifiers & ModifierKeys.Control) != 0))
+            return false;
+        FullScreenToggleRequested?.Invoke();
+        return true;
     }
 
     /// <summary>Lleva la ventana al monitor pedido (1..n; 0 = donde esta) antes de la pantalla completa.</summary>
-    public static void MoveToScreen(Window window, int screen)
+    public static void MoveToScreen(Window window, int screen) =>
+        MoveToScreen(window, screen, [.. System.Windows.Forms.Screen.AllScreens.Select(s => s.Bounds)]);
+
+    /// <summary>Lo mismo con los monitores dados (sus medidas en pixeles, en el orden de Windows).</summary>
+    internal static void MoveToScreen(Window window, int screen, IReadOnlyList<System.Drawing.Rectangle> screens)
     {
-        var screens = System.Windows.Forms.Screen.AllScreens;
-        if (screen <= 0 || screen > screens.Length)
+        if (screen <= 0 || screen > screens.Count)
             return;
-        var bounds = screens[screen - 1].Bounds;
+        var bounds = screens[screen - 1];
         var source = PresentationSource.FromVisual(window);
         var m = source?.CompositionTarget?.TransformFromDevice ?? System.Windows.Media.Matrix.Identity;
         var topLeft = m.Transform(new Point(bounds.Left, bounds.Top));
