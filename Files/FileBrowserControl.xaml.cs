@@ -15,11 +15,9 @@ namespace SocRcManager.Files;
 /// </summary>
 public partial class FileBrowserControl : UserControl
 {
-    private IFileSide? _local;
     private RemoteSide? _remote;
     private Connection? _options;
-    private Func<CancellationToken, Task<IRemoteFileSystem>>? _factory;
-    private readonly List<IRemoteFileSystem> _pool = [];
+    private FileTransfer? _engine;
     private CancellationTokenSource? _transfer;
     private readonly Queue<(FilePane From, FilePane To, IReadOnlyList<FileEntry> Entries)> _queue = new();
     private bool _busy;
@@ -45,10 +43,9 @@ public partial class FileBrowserControl : UserControl
     /// </summary>
     public void Attach(IFileSide local, RemoteSide remote, string remoteTitle, Connection options, Func<CancellationToken, Task<IRemoteFileSystem>> factory)
     {
-        _local = local;
         _remote = remote;
         _options = options;
-        _factory = factory;
+        _engine = new FileTransfer(remote, factory);
         LocalPane.ShowHidden = RemotePane.ShowHidden = options.FilesShowHidden;
         LocalPane.Attach(local, Loc.Get("FilesThisPc"), Loc.Get("FilesUpload"));
         RemotePane.Attach(remote, remoteTitle, Loc.Get("FilesDownload"));
@@ -78,7 +75,8 @@ public partial class FileBrowserControl : UserControl
             _ = RunQueueAsync();
     }
 
-    private enum Conflict { Ask, Overwrite, Skip }
+    /// <summary>Lo que transfiere (sin interfaz); null hasta <see cref="Attach"/>.</summary>
+    internal FileTransfer? Engine => _engine;
 
     private async Task RunQueueAsync()
     {
@@ -88,119 +86,13 @@ public partial class FileBrowserControl : UserControl
         Progress.Visibility = CancelButton.Visibility = Visibility.Visible;
         var failed = false;
         var options = _options ?? new Connection();
-        var parallel = Math.Clamp(options.TransferParallel, 1, 8);
-        var retries = Math.Clamp(options.TransferRetries, 0, 5);
         try
         {
             while (_queue.Count > 0 && !token.IsCancellationRequested)
             {
                 var (from, to, entries) = _queue.Dequeue();
-                var upload = from.Side!.IsLocal;
-
-                // 1. Medir: que ficheros, a donde, cuantos bytes.
-                var plan = new List<(FileEntry Entry, string Target)>();
-                long total = 0;
-                foreach (var entry in entries)
-                    total += await FileRules.PlanAsync(from.Side!, to.Side!, entry, to.CurrentPath, plan, token);
-
-                // 2. Conflictos: lo que ya existe en el destino, segun la opcion de la conexion.
-                var policy = (Conflict)Math.Clamp(options.TransferOnConflict, 0, 2);
-                var files = new List<(FileEntry Entry, string Target)>();
-                Conflict? forAll = null;
-                foreach (var (entry, target) in plan.Where(p => !p.Entry.IsDirectory))
-                {
-                    token.ThrowIfCancellationRequested();
-                    var exists = upload ? await _remote!.Fs.StatAsync(target, token) is not null : File.Exists(target);
-                    if (!exists)
-                    {
-                        files.Add((entry, target));
-                        continue;
-                    }
-                    var decision = forAll ?? policy;
-                    if (decision == Conflict.Ask)
-                    {
-                        var answer = ConflictWindow.Ask(Window.GetWindow(this)!, entry.Name);
-                        if (answer.Cancel)
-                            throw new OperationCanceledException();
-                        decision = answer.Overwrite ? Conflict.Overwrite : Conflict.Skip;
-                        if (answer.ApplyToAll)
-                            forAll = decision;
-                    }
-                    if (decision == Conflict.Overwrite)
-                        files.Add((entry, target));
-                    else
-                        total -= entry.Size;
-                }
-
-                // 3. Carpetas primero, en orden (una dentro de otra), en la conexion principal.
-                foreach (var (entry, target) in plan.Where(p => p.Entry.IsDirectory))
-                {
-                    token.ThrowIfCancellationRequested();
-                    try { await to.Side!.CreateDirectoryAsync(target, token); } catch (Exception) { /* ya existe */ }
-                }
-
-                // 4. Ficheros, N a la vez, cada uno con su conexion (los clientes SFTP/FTP no admiten
-                //    dos operaciones a la vez en la misma conexion).
-                long done = 0;
-                var active = 0;
-                void Report(string name) => Dispatcher.BeginInvoke(() =>
-                {
-                    Progress.Value = total > 0 ? Math.Min(100, Interlocked.Read(ref done) * 100.0 / total) : 0;
-                    TransferText.Text = Loc.Format(upload ? "FilesUploading" : "FilesDownloading", name, FileRules.SizeText(Interlocked.Read(ref done)), FileRules.SizeText(total))
-                        + (active > 1 ? $"  ·  ×{active}" : string.Empty);
-                });
-
-                using var gate = new SemaphoreSlim(parallel);
-                var tasks = files.Select(async item =>
-                {
-                    await gate.WaitAsync(token);
-                    var fs = await RentAsync(token);
-                    Interlocked.Increment(ref active);
-                    try
-                    {
-                        Report(item.Entry.Name);
-                        long mine = 0;
-                        var progress = new Progress<long>(delta =>
-                        {
-                            Interlocked.Add(ref done, delta);
-                            Interlocked.Add(ref mine, delta);
-                            Report(item.Entry.Name);
-                        });
-                        for (var attempt = 0; ; attempt++)
-                        {
-                            try
-                            {
-                                if (upload)
-                                    await fs.UploadAsync(item.Entry.FullPath, item.Target, progress, token);
-                                else
-                                    await fs.DownloadAsync(item.Entry.FullPath, item.Target, progress, token);
-                                break;
-                            }
-                            catch (Exception) when (attempt < retries && !token.IsCancellationRequested)
-                            {
-                                // Lo que se contó de este intento se descuenta y se vuelve a empezar.
-                                Interlocked.Add(ref done, -Interlocked.Exchange(ref mine, 0));
-                                await Task.Delay(1000, token);
-                            }
-                        }
-                        if (options.TransferPreserveTimes && item.Entry.Modified is { } when)
-                        {
-                            try
-                            {
-                                if (upload) await fs.SetModifiedAsync(item.Target, when, token);
-                                else File.SetLastWriteTime(item.Target, when);
-                            }
-                            catch (Exception) { /* no todos los servidores lo admiten */ }
-                        }
-                    }
-                    finally
-                    {
-                        Interlocked.Decrement(ref active);
-                        Return(fs);
-                        gate.Release();
-                    }
-                }).ToList();
-                await Task.WhenAll(tasks);
+                await _engine!.RunAsync(from.Side!, to.Side!, to.CurrentPath, entries, options,
+                    name => ConflictWindow.Ask(Window.GetWindow(this)!, name), ShowProgress, token);
                 await to.RefreshAsync();
             }
             TransferText.Text = token.IsCancellationRequested ? Loc.Get("FilesCancelled") : Loc.Get("FilesDone");
@@ -229,36 +121,14 @@ public partial class FileBrowserControl : UserControl
         }
     }
 
-    // Conexiones para transferir: la principal (la del panel) y las que se abran ademas, hasta
-    // el numero de transferencias a la vez. Se reutilizan.
-    private readonly Queue<IRemoteFileSystem> _idle = new();
-    private readonly SemaphoreSlim _poolGate = new(1);
-
-    private async Task<IRemoteFileSystem> RentAsync(CancellationToken token)
+    // Llega mas tarde (BeginInvoke): si la transferencia ya acabo, no tapa «terminada» ni el error.
+    private void ShowProgress(TransferProgress p) => Dispatcher.BeginInvoke(() =>
     {
-        await _poolGate.WaitAsync(token);
-        try
-        {
-            if (_idle.Count > 0)
-                return _idle.Dequeue();
-            if (_pool.Count == 0)
-            {
-                _pool.Add(_remote!.Fs);
-                return _remote.Fs;
-            }
-            var fresh = await _factory!(token);
-            _pool.Add(fresh);
-            return fresh;
-        }
-        finally { _poolGate.Release(); }
-    }
-
-    private void Return(IRemoteFileSystem fs)
-    {
-        _poolGate.Wait();
-        try { _idle.Enqueue(fs); }
-        finally { _poolGate.Release(); }
-    }
+        if (!_busy)
+            return;
+        Progress.Value = p.Percent;
+        TransferText.Text = p.Text;
+    });
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => _transfer?.Cancel();
 
@@ -266,7 +136,8 @@ public partial class FileBrowserControl : UserControl
     //  Abrir ficheros remotos: editor integrado, o programa por defecto con una copia temporal
     // =====================================================================
 
-    private static readonly string TempRoot = Path.Combine(Path.GetTempPath(), "sOCRCManager", "abiertos");
+    /// <summary>Donde se bajan las copias que se abren con el programa por defecto.</summary>
+    internal static string TempRoot { get; set; } = Path.Combine(Path.GetTempPath(), "sOCRCManager", "abiertos");
 
     public async Task EditRemotePathAsync(string path)
     {
@@ -316,9 +187,6 @@ public partial class FileBrowserControl : UserControl
     public void Shutdown()
     {
         _transfer?.Cancel();
-        foreach (var fs in _pool)
-            try { fs.Dispose(); } catch (Exception) { }
-        if (_remote is not null && !_pool.Contains(_remote.Fs))
-            _remote.Fs.Dispose();
+        _engine?.Shutdown();
     }
 }

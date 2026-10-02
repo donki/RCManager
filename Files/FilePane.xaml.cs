@@ -129,10 +129,13 @@ public partial class FilePane : UserControl
             paths.Add(CurrentPath);
         if (paths.Count > 0)
         {
-            Clipboard.SetText(string.Join(Environment.NewLine, paths));
+            SetClipboard(string.Join(Environment.NewLine, paths));
             PaneStatus.Text = Loc.Format("FilesPathCopied", paths.Count);
         }
     }
+
+    /// <summary>Copiar al portapapeles de Windows (las pruebas no tocan el de verdad).</summary>
+    internal static Action<string> SetClipboard { get; set; } = Clipboard.SetText;
 
     private void OnHiddenClick(object sender, RoutedEventArgs e) => _ = RefreshAsync();
 
@@ -159,17 +162,20 @@ public partial class FilePane : UserControl
         var dialog = new PermissionsWindow(Window.GetWindow(this)!, entries);
         if (Dialogs.ShowModal(dialog) != true || dialog.Change is not { } change || (!change.ChangeMode && !change.ChangeOwner))
             return;
+        string result;
         try
         {
             foreach (var entry in entries)
                 await FileRules.ApplyPermissionsAsync(remote, entry, change, CancellationToken.None);
-            PaneStatus.Text = Loc.Get("PermsApplied");
+            result = Loc.Get("PermsApplied");
         }
         catch (Exception ex)
         {
-            PaneStatus.Text = ex.Message.ReplaceLineEndings(" ");
+            result = ex.Message.ReplaceLineEndings(" ");
         }
+        // Al volver a listar, la barra enseña la cuenta: el resultado va despues para que se vea.
         await RefreshAsync();
+        PaneStatus.Text = result;
     }
 
     public async Task NavigateAsync(string path)
@@ -280,6 +286,7 @@ public partial class FilePane : UserControl
         var what = entries.Count == 1 ? entries[0].Name : Loc.Format("FilesItems", entries.Count);
         if (!PromptWindow.Confirm(Window.GetWindow(this)!, Loc.Get("Delete"), Loc.Format("FilesDeleteConfirm", what)))
             return;
+        string? error = null;
         try
         {
             foreach (var entry in entries)
@@ -287,9 +294,12 @@ public partial class FilePane : UserControl
         }
         catch (Exception ex)
         {
-            PaneStatus.Text = ex.Message.ReplaceLineEndings(" ");
+            error = ex.Message.ReplaceLineEndings(" ");
         }
+        // Al volver a listar, la barra enseña la cuenta: el error va despues para que se vea.
         await RefreshAsync();
+        if (error is not null)
+            PaneStatus.Text = error;
     }
 
     private void OnPathKeyDown(object sender, KeyEventArgs e)
@@ -327,16 +337,22 @@ public partial class FilePane : UserControl
         _dragArmed = ItemUnder(e.OriginalSource as DependencyObject) is not null;
     }
 
-    private void OnListMouseMove(object sender, MouseEventArgs e)
+    private void OnListMouseMove(object sender, MouseEventArgs e) => TryStartDrag(e.LeftButton == MouseButtonState.Pressed, e.GetPosition(List));
+
+    /// <summary>Con el boton pulsado sobre un elemento y el raton movido lo bastante, empieza a arrastrar lo seleccionado.</summary>
+    internal void TryStartDrag(bool leftPressed, Point position)
     {
-        if (!_dragArmed || e.LeftButton != MouseButtonState.Pressed || SelectedEntries.Count == 0)
+        if (!_dragArmed || !leftPressed || SelectedEntries.Count == 0)
             return;
-        var delta = e.GetPosition(List) - _dragStart;
+        var delta = position - _dragStart;
         if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
             return;
         _dragArmed = false;
-        DragDrop.DoDragDrop(List, new DataObject(typeof(FileDrag), new FileDrag(this, SelectedEntries)), DragDropEffects.Copy);
+        StartDrag(List, new DataObject(typeof(FileDrag), new FileDrag(this, SelectedEntries)));
     }
+
+    /// <summary>El arrastrar de Windows (bucle propio hasta soltar).</summary>
+    internal static Action<DependencyObject, DataObject> StartDrag { get; set; } = (source, data) => DragDrop.DoDragDrop(source, data, DragDropEffects.Copy);
 
     private void OnListDragOver(object sender, DragEventArgs e)
     {
@@ -362,5 +378,5 @@ public partial class FilePane : UserControl
         return source as ListViewItem;
     }
 
-    private sealed record FileDrag(FilePane Source, IReadOnlyList<FileEntry> Entries);
+    internal sealed record FileDrag(FilePane Source, IReadOnlyList<FileEntry> Entries);
 }
