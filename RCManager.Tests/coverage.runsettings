@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cobertura de los ficheros de la aplicacion enlazados en el ensamblado de pruebas: se incluye el
-  propio ensamblado de pruebas (coverlet lo excluye por defecto) y se quitan las pruebas y el
-  codigo de apoyo, que viven en esta carpeta.
+  Cobertura de la aplicacion (sOCRCManager.dll, referenciada por las pruebas). Sin excluir
+  CompilerGeneratedAttribute: los metodos async y las lambdas cuentan. Solo se quita lo generado
+  (GeneratedCodeAttribute: el InitializeComponent de las XAML) y lo que vive en obj/.
 -->
 <RunSettings>
   <DataCollectionRunSettings>
@@ -10,8 +10,9 @@
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <IncludeTestAssembly>true</IncludeTestAssembly>
-          <ExcludeByFile>**/RCManager.Tests/*.cs,**/obj/**</ExcludeByFile>
+          <Include>[sOCRCManager]*</Include>
+          <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/obj/**</ExcludeByFile>
         </Configuration>
       </DataCollector>
     </DataCollectors>

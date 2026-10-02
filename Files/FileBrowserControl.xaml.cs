@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using SocRcManager.Localization;
 using SocRcManager.Models;
+using SocRcManager.Services;
 
 namespace SocRcManager.Files;
 
@@ -284,7 +285,7 @@ public partial class FileBrowserControl : UserControl
         {
             var editor = await TextEditorWindow.OpenRemoteAsync(Window.GetWindow(this)!, _remote.Fs, entry);
             editor.Saved += () => _ = RemotePane.RefreshAsync();
-            editor.Show();
+            Dialogs.ShowWindow(editor);
         }
         catch (Exception ex)
         {
@@ -304,7 +305,7 @@ public partial class FileBrowserControl : UserControl
             TransferText.Text = Loc.Format("FilesDownloading", entry.Name, "0 B", FileRules.SizeText(entry.Size));
             await _remote.Fs.DownloadAsync(entry.FullPath, local, new Progress<long>(), CancellationToken.None);
             TransferText.Text = Loc.Get("FilesDone");
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(local) { UseShellExecute = true });
+            Dialogs.Start(new System.Diagnostics.ProcessStartInfo(local) { UseShellExecute = true });
         }
         catch (Exception ex)
         {

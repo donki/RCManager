@@ -596,13 +596,7 @@ public partial class MainWindow : Window
 
     private void OnImportClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = Loc.Get("ImportFilter"),
-            CheckFileExists = true,
-            Multiselect = true,
-        };
-        if (dialog.ShowDialog(this) != true)
+        if (Dialogs.PickFiles(this, Loc.Get("ImportFilter"), true) is not { } files)
             return;
 
         try
@@ -611,7 +605,7 @@ public partial class MainWindow : Window
             var connections = new List<Connection>();
             var folders = new List<string>();
             var skipped = 0;
-            foreach (var file in dialog.FileNames)
+            foreach (var file in files)
             {
                 if (file.EndsWith(".rdp", StringComparison.OrdinalIgnoreCase))
                 {
@@ -654,7 +648,7 @@ public partial class MainWindow : Window
     private bool Edit(Connection connection)
     {
         var dialog = new ConnectionWindow(connection, _store.AllFolders()) { Owner = this };
-        return dialog.ShowDialog() == true;
+        return Dialogs.ShowModal(dialog) == true;
     }
 
     private void SelectConnection(Connection connection)
@@ -674,7 +668,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{Store.Location}\"") { UseShellExecute = true });
+            Dialogs.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{Store.Location}\"") { UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -720,7 +714,7 @@ public partial class MainWindow : Window
         SelectConnection(connection);
         var copy = connection.Clone();
         var dialog = new ConnectionWindow(copy, _store.AllFolders()) { Owner = this, InitialTab = tab };
-        if (dialog.ShowDialog() == true)
+        if (Dialogs.ShowModal(dialog) == true)
         {
             _store.Connections[_store.Connections.IndexOf(connection)] = copy;
             _store.Save();
@@ -1212,7 +1206,7 @@ public partial class MainWindow : Window
         };
         open.Window = window;
         UpdateDetachButton(open);
-        window.Show();
+        Dialogs.ShowWindow(window);
 
         EmptyTabs.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         SetStatus(Loc.Format("DetachedStatus", open.Connection.Name));
@@ -1469,12 +1463,12 @@ public partial class MainWindow : Window
         BuildTree();
     }
 
-    private void OnAboutClick(object sender, RoutedEventArgs e) => new AboutWindow { Owner = this }.ShowDialog();
+    private void OnAboutClick(object sender, RoutedEventArgs e) => Dialogs.ShowModal(new AboutWindow { Owner = this });
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)
     {
         var dialog = new SettingsWindow(_settings, _sync) { Owner = this };
-        dialog.ShowDialog();
+        Dialogs.ShowModal(dialog);
         // El interruptor de la bandeja se puede haber cambiado ahi.
         if (_tray is not null)
             _tray.MinimizeToTray = _settings.TrayOnMinimize;

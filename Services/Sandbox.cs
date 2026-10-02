@@ -24,7 +24,7 @@ public static class Sandbox
 
 #if DEBUG
     /// <summary>Si esta en modo aislado. Lo decide <see cref="Apply()"/>, lo primero al arrancar.</summary>
-    public static bool IsOn { get; private set; }
+    public static bool IsOn { get; internal set; }
 #else
     public static bool IsOn => false;
 #endif
@@ -50,10 +50,22 @@ public static class Sandbox
         AppSettings.FilePath = Path.Combine(Folder, "settings.json");
         AppLog.Folder = Folder;
 
-        // Ninguna ventana propia se activa al abrirse (tampoco los dialogos modales), para no
-        // quitarle el primer plano a quien este trabajando mientras corren las pruebas.
+        QuietWindows();
+#endif
+    }
+
+    private static bool _quiet;
+
+    /// <summary>
+    /// Ninguna ventana propia se activa al abrirse (tampoco los dialogos modales), para no quitarle el
+    /// primer plano a quien este trabajando mientras corren las pruebas. Una vez por proceso.
+    /// </summary>
+    internal static void QuietWindows()
+    {
+        if (_quiet)
+            return;
+        _quiet = true;
         foreach (var type in typeof(Sandbox).Assembly.GetTypes().Where(t => t.IsSubclassOf(typeof(System.Windows.Window)) && !t.IsAbstract))
             System.Windows.Window.ShowActivatedProperty.OverrideMetadata(type, new System.Windows.FrameworkPropertyMetadata(false));
-#endif
     }
 }

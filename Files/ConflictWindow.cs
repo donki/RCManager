@@ -50,7 +50,7 @@ public sealed class ConflictWindow : Window
     public static Answer Ask(Window owner, string name)
     {
         var w = new ConflictWindow(owner, name);
-        w.ShowDialog();
+        Dialogs.ShowModal(w);
         return w._answer;
     }
 }

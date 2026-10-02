@@ -46,11 +46,11 @@ public partial class AboutWindow : Window
     {
         try
         {
-            Process.Start(new ProcessStartInfo(ContactAddress) { UseShellExecute = true });
+            Dialogs.Start(new ProcessStartInfo(ContactAddress) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, Loc.Get("Contact"));
+            Dialogs.SystemMessage(this, ex.Message, Loc.Get("Contact"));
         }
     }
 
@@ -70,7 +70,7 @@ public partial class AboutWindow : Window
         Loc.Toggle();
         var owner = Owner;
         Close();
-        new AboutWindow { Owner = owner }.ShowDialog();
+        Dialogs.ShowModal(new AboutWindow { Owner = owner });
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();

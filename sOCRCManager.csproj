@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -62,6 +62,11 @@
 
     <!-- SSH (MIT). -->
     <PackageReference Include="SSH.NET" Version="2025.0.0" />
+  </ItemGroup>
+
+  <!-- Las pruebas (RCManager.Tests) llegan a lo interno: controles con nombre, costuras de prueba. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="RCManager.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,17 +7,6 @@ using SocRcManager.Localization;
 // El almacen, los ajustes, el registro y el idioma son estaticos: las pruebas van de una en una.
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
-namespace SocRcManager.Services
-{
-    /// <summary>Lo que en la aplicacion genera oauth.props: aqui, identificadores de mentira.</summary>
-    public static class OAuthSecrets
-    {
-        public const string MicrosoftClientId = "ms-client-test";
-        public const string GoogleClientId = "google-client-test";
-        public const string GoogleClientSecret = "google-secret-test";
-    }
-}
-
 namespace SocRcManager.Tests
 {
     /// <summary>Una carpeta temporal propia de la prueba que se borra al terminar.</summary>

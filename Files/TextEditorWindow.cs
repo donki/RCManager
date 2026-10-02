@@ -276,6 +276,6 @@ public sealed class SaveQuestionWindow : Window
     public static bool? Ask(Window owner, string name)
     {
         var w = new SaveQuestionWindow(owner, name);
-        return w.ShowDialog() == true ? w._answer : null;
+        return Dialogs.ShowModal(w) == true ? w._answer : null;
     }
 }

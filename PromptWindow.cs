@@ -95,28 +95,28 @@ public sealed class PromptWindow : Window
     public static string? Ask(Window owner, string title, string message, string initial)
     {
         var w = new PromptWindow(owner, title, message, initial, password: false, confirm: false);
-        return w.ShowDialog() == true ? w._text!.Text : null;
+        return Dialogs.ShowModal(w) == true ? w._text!.Text : null;
     }
 
     /// <summary>Una contraseña. Null si se cancela.</summary>
     public static string? AskPassword(Window owner, string title, string message)
     {
         var w = new PromptWindow(owner, title, message, null, password: true, confirm: false);
-        return w.ShowDialog() == true ? w._password!.Password : null;
+        return Dialogs.ShowModal(w) == true ? w._password!.Password : null;
     }
 
     /// <summary>Una contraseña con la casilla de «guardarla». Null si se cancela.</summary>
     public static (string Password, bool Save)? AskPassword(Window owner, string title, string message, string saveText)
     {
         var w = new PromptWindow(owner, title, message, null, password: true, confirm: false, checkText: saveText);
-        return w.ShowDialog() == true ? (w._password!.Password, w._check!.IsChecked == true) : null;
+        return Dialogs.ShowModal(w) == true ? (w._password!.Password, w._check!.IsChecked == true) : null;
     }
 
     /// <summary>Un aviso: solo enterarse y aceptar.</summary>
     public static void Alert(Window owner, string title, string message) =>
-        new PromptWindow(owner, title, message, null, password: false, confirm: false, alert: true).ShowDialog();
+        Dialogs.ShowModal(new PromptWindow(owner, title, message, null, password: false, confirm: false, alert: true));
 
     /// <summary>Confirmar algo que no se deshace. Por defecto el boton es el de borrar; se puede cambiar.</summary>
     public static bool Confirm(Window owner, string title, string message, string? okTooltip = null, string? okGlyph = null) =>
-        new PromptWindow(owner, title, message, null, password: false, confirm: true, okTooltip: okTooltip, okGlyph: okGlyph).ShowDialog() == true;
+        Dialogs.ShowModal(new PromptWindow(owner, title, message, null, password: false, confirm: true, okTooltip: okTooltip, okGlyph: okGlyph)) == true;
 }

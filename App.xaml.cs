@@ -7,10 +7,19 @@ namespace SocRcManager;
 
 public partial class App : Application
 {
+    /// <summary>Las pruebas crean la App solo por sus recursos (estilos, colores): sin arrancar nada.</summary>
+    internal static bool SkipStartup { get; set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (!SkipStartup)
+            Start(e.Args);
+    }
 
+    /// <summary>El arranque: modo aislado, errores, instancia unica, tema y la ventana principal.</summary>
+    internal void Start(string[] commandLine)
+    {
         // Debug con SOC_SANDBOX: datos en otra carpeta y sin conectar a nada (pruebas de interfaz).
         Sandbox.Apply();
 
@@ -35,7 +44,7 @@ public partial class App : Application
         // de notificacion, se le pasa lo pedido (ponerse delante, --open...) y esta se cierra. Si no
         // contesta en un par de segundos, esta arranca igual.
         _single = new SingleInstance(SingleInstance.NameFor(Sandbox.Folder));
-        var outcome = _single.Start(new SingleInstance.Request(MyVersion.ToString(), e.Args, Environment.ProcessPath),
+        var outcome = _single.Start(new SingleInstance.Request(MyVersion.ToString(), commandLine, Environment.ProcessPath),
             patience: TimeSpan.FromSeconds(5), ackTimeout: TimeSpan.FromSeconds(2.5));
         if (outcome == SingleInstance.Outcome.HandedOver)
         {
@@ -55,7 +64,7 @@ public partial class App : Application
         // arrancar (accesos directos a un servidor concreto). --tray: escondida en el area de
         // notificacion. --size AxAl, --edit, --edit-tab, --edit-file: capturas y accesos directos
         // (StartupArgs).
-        var args = StartupArgs.Parse(e.Args);
+        var args = StartupArgs.Parse(commandLine);
         var window = new MainWindow();
         MainWindow = window;
         if (args.Size is { } s)
@@ -150,7 +159,7 @@ public partial class App : Application
                 var psi = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false };
                 foreach (var a in request.Args)
                     psi.ArgumentList.Add(a);
-                System.Diagnostics.Process.Start(psi);
+                Dialogs.Start(psi);
             }
         }
         catch (Exception ex)

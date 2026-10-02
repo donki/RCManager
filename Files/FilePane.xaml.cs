@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using SocRcManager.Localization;
+using SocRcManager.Services;
 
 namespace SocRcManager.Files;
 
@@ -95,7 +96,7 @@ public partial class FilePane : UserControl
             return;
         if (_side.IsLocal)
         {
-            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
+            try { Dialogs.Start(new System.Diagnostics.ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
             catch (Exception ex) { PaneStatus.Text = ex.Message.ReplaceLineEndings(" "); }
         }
         else if (FileRules.LooksLikeText(entry))
@@ -156,7 +157,7 @@ public partial class FilePane : UserControl
             return;
         var entries = SelectedEntries;
         var dialog = new PermissionsWindow(Window.GetWindow(this)!, entries);
-        if (dialog.ShowDialog() != true || dialog.Change is not { } change || (!change.ChangeMode && !change.ChangeOwner))
+        if (Dialogs.ShowModal(dialog) != true || dialog.Change is not { } change || (!change.ChangeMode && !change.ChangeOwner))
             return;
         try
         {
