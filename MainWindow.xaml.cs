@@ -26,6 +26,9 @@ public partial class MainWindow : Window
     private readonly CloudSync _sync;
     private readonly List<OpenSession> _open = [];
 
+    /// <summary>Como se crea la sincronizacion con la nube (las pruebas le dan un cliente HTTP de mentira).</summary>
+    internal static Func<AppSettings, Store, CloudSync> CreateSync { get; set; } = (settings, store) => new CloudSync(settings, store);
+
     /// <summary>
     /// Una sesion abierta: su pestaña en la principal o, si se ha sacado, su ventana propia
     /// (<see cref="SessionWindow"/>). La cabecera y el control de la sesion se mueven de una a otra.
@@ -72,8 +75,8 @@ public partial class MainWindow : Window
 
         // Con la nube elegida, al arrancar se baja lo que haya (si es mas nuevo) y cada guardado
         // se sube detras. Todo cifrado con la frase del usuario (CloudSync).
-        _sync = new CloudSync(_settings, _store);
-        _sync.Status += s => Dispatcher.BeginInvoke(() => SetStatus(s));
+        _sync = CreateSync(_settings, _store);
+        _sync.Status += OnSyncStatus;
         _sync.Replaced += () => Dispatcher.BeginInvoke(BuildTree);
         Loaded += async (_, _) =>
         {
@@ -104,7 +107,17 @@ public partial class MainWindow : Window
             if (SessionPlacement.OnMainClosing(detached, _settings.AskBeforeClosingDetached, _forceClose) == SessionPlacement.CloseAction.Ask)
             {
                 if (!IsVisible)
-                    BringToFront();
+                {
+                    // Escondida en el area de notificacion («Salir» del icono): mientras se cierra no
+                    // se puede enseñar (WPF lanza). Se deja para despues: se saca y se vuelve a cerrar.
+                    e.Cancel = true;
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        BringToFront();
+                        Close();
+                    });
+                    return;
+                }
                 if (!PromptWindow.Confirm(this, Loc.Get("CloseAllTitle"), Loc.Format("CloseDetachedConfirm", detached), Loc.Get("CloseAllTitle"), "\uE711"))
                 {
                     e.Cancel = true;
@@ -142,6 +155,19 @@ public partial class MainWindow : Window
         EmptyTabs.Text = Loc.Get("EmptyTabs");
         if (StatusText.Text.Length == 0)
             StatusText.Text = Loc.Get("Ready");
+    }
+
+    /// <summary>
+    /// Lo que cuenta la sincronizacion. En el hilo de la interfaz se pone al momento: dejarlo para
+    /// luego hacia que un fallo inmediato (sin sesion iniciada, por ejemplo) quedase tapado por el
+    /// «Sincronizando…» de antes, que llegaba detras.
+    /// </summary>
+    private void OnSyncStatus(string text)
+    {
+        if (Dispatcher.CheckAccess())
+            SetStatus(text);
+        else
+            Dispatcher.BeginInvoke(() => SetStatus(text));
     }
 
     // Una sola linea pase lo que pase: un mensaje con saltos de linea hacia crecer la barra de
@@ -319,17 +345,20 @@ public partial class MainWindow : Window
         _dragItem = ItemAt(e.OriginalSource as DependencyObject);
     }
 
-    private void OnTreeMouseMove(object sender, MouseEventArgs e)
+    private void OnTreeMouseMove(object sender, MouseEventArgs e) => TreeMouseMove(e.GetPosition(Tree), e.LeftButton == MouseButtonState.Pressed);
+
+    /// <summary>Con el boton pulsado y pasado el umbral, empieza a arrastrar el elemento donde se pulso.</summary>
+    internal void TreeMouseMove(Point position, bool leftPressed)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || _dragItem?.Tag is not Node node)
+        if (!leftPressed || _dragItem?.Tag is not Node node)
             return;
-        var delta = e.GetPosition(Tree) - _dragStart;
+        var delta = position - _dragStart;
         if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
             return;
 
         var item = _dragItem;
         _dragItem = null;
-        DragDrop.DoDragDrop(item, new DataObject(typeof(Node), node), DragDropEffects.Move | DragDropEffects.Copy);
+        Desktop.Current.DoDragDrop(item, new DataObject(typeof(Node), node), DragDropEffects.Move | DragDropEffects.Copy);
         PaintDropTarget(null);
     }
 
@@ -457,28 +486,37 @@ public partial class MainWindow : Window
 
     // Doble clic sobre una conexion: conectar. Ctrl + doble clic: editar la conexion o renombrar la
     // carpeta (sobre una carpeta, el doble clic a secas la despliega, que es lo suyo).
-    private async void OnTreeDoubleClick(object sender, MouseButtonEventArgs e)
+    private void OnTreeDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (ItemAt(e.OriginalSource as DependencyObject) is null || Selected is not { } node)
-            return;
-        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
-        {
+        if (TreeDoubleClick(e.OriginalSource as DependencyObject, Keyboard.Modifiers))
             e.Handled = true;
-            OnEditClick(sender, e);
-        }
-        else if (node.Connection is { } c)
-        {
-            e.Handled = true;
-            await OpenAsync(c);
-        }
     }
 
-    private async void OnTreeKeyDown(object sender, KeyEventArgs e)
+    /// <summary>El doble clic sobre <paramref name="source"/>; devuelve si lo ha atendido.</summary>
+    internal bool TreeDoubleClick(DependencyObject? source, ModifierKeys modifiers)
+    {
+        if (ItemAt(source) is null || Selected is not { } node)
+            return false;
+        if ((modifiers & ModifierKeys.Control) != 0)
+        {
+            OnEditClick(this, new RoutedEventArgs());
+            return true;
+        }
+        if (node.Connection is not { } c)
+            return false;
+        Open(c);
+        return true;
+    }
+
+    /// <summary>Abre la conexion sin esperar (como un manejador de eventos asincrono).</summary>
+    private async void Open(Connection connection) => await OpenAsync(connection);
+
+    private void OnTreeKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter && Selected?.Connection is { } c)
         {
             e.Handled = true;
-            await OpenAsync(c);
+            Open(c);
         }
         else if (e.Key == Key.Delete && Selected is not null)
         {
@@ -749,12 +787,7 @@ public partial class MainWindow : Window
             }
         }
 
-        ISession session = connection.Kind switch
-        {
-            ConnectionKind.Ssh => new SshSession(connection),
-            ConnectionKind.Sftp or ConnectionKind.Ftp => new FileSession(connection),
-            _ => new RdpSession(connection),
-        };
+        var session = SessionFactory.Create(connection);
 
         var fullButton = new Button
         {
@@ -894,8 +927,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void MoveToScreen(int screen)
     {
-        var screens = System.Windows.Forms.Screen.AllScreens;
-        if (screen <= 0 || screen > screens.Length)
+        var screens = Desktop.Current.Monitors();
+        if (screen <= 0 || screen > screens.Count)
             return;
         var bounds = screens[screen - 1].Bounds;
         var source = PresentationSource.FromVisual(this);
@@ -966,12 +999,14 @@ public partial class MainWindow : Window
     private void HideTabHeaders(bool hide)
     {
         foreach (TabItem item in Tabs.Items)
-            item.Visibility = hide && !ReferenceEquals(item, Tabs.SelectedItem) ? Visibility.Collapsed : Visibility.Visible;
-        if (Tabs.SelectedItem is TabItem selected)
-            selected.Visibility = Visibility.Visible;
-        // La cabecera de la pestaña visible se encoge a nada: el contenido ocupa todo.
-        if (Tabs.SelectedItem is TabItem s)
-            s.Height = hide ? 0 : double.NaN;
+        {
+            var selected = ReferenceEquals(item, Tabs.SelectedItem);
+            item.Visibility = hide && !selected ? Visibility.Collapsed : Visibility.Visible;
+            // La cabecera de la pestaña visible se encoge a nada: el contenido ocupa todo. Las demas,
+            // a su altura: si no, la que estuvo activa al cambiar de sesion en pantalla completa se
+            // quedaba sin cabecera al salir.
+            item.Height = hide && selected ? 0 : double.NaN;
+        }
     }
 
     private void OnToggleFullScreenClick(object sender, RoutedEventArgs e) => SetFullScreen(!_fullScreen);
@@ -1035,14 +1070,15 @@ public partial class MainWindow : Window
             return;
         menu.PlacementTarget = sender as UIElement;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
-        menu.IsOpen = true;
+        Desktop.Current.OpenMenu(menu);
     }
 
     private void SelectSession(OpenSession open)
     {
         if (open.Window is { } w)
         {
-            w.BringToFront();
+            // En modo aislado sin activarla, como la principal (no se le quita el foco a nadie).
+            w.BringToFront(activate: !Sandbox.IsOn);
             Dispatcher.BeginInvoke(open.Session.Focus, System.Windows.Threading.DispatcherPriority.Input);
             return;
         }
@@ -1071,23 +1107,29 @@ public partial class MainWindow : Window
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
+        if (Shortcut(e.Key, Keyboard.Modifiers))
+            e.Handled = true;
+    }
+
+    /// <summary>Los atajos de la ventana; devuelve si la tecla era uno.</summary>
+    internal bool Shortcut(Key key, ModifierKeys modifiers)
+    {
         // Ctrl+Tab / Ctrl+Mayus+Tab: siguiente / anterior pestaña (con el escritorio remoto enfocado
         // las teclas se van al remoto; para eso esta el boton de sesiones).
-        if (e.Key == Key.Tab && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        if (key == Key.Tab && (modifiers & ModifierKeys.Control) != 0)
         {
-            CycleTab((Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? -1 : 1);
-            e.Handled = true;
+            CycleTab((modifiers & ModifierKeys.Shift) != 0 ? -1 : 1);
+            return true;
         }
-        else if (e.Key == Key.Escape && _fullScreen && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        if (key == Key.Escape && _fullScreen && (modifiers & ModifierKeys.Control) != 0)
         {
             SetFullScreen(false);
-            e.Handled = true;
+            return true;
         }
-        else if (e.Key == Key.F11)
-        {
-            SetFullScreen(!_fullScreen);
-            e.Handled = true;
-        }
+        if (key != Key.F11)
+            return false;
+        SetFullScreen(!_fullScreen);
+        return true;
     }
 
     /// <summary>Desconecta y quita la sesion, este en una pestaña o en su ventana suelta.</summary>
@@ -1179,8 +1221,8 @@ public partial class MainWindow : Window
             return;
         if (_fullScreen)
             SetFullScreen(false);
-        if (open.Session is RdpSession { IsFullScreen: true })
-            open.Session.LeaveFullScreen();
+        // La pantalla completa propia de la sesion (RDP) no se lleva a la otra ventana (si no lo esta, no hace nada).
+        open.Session.LeaveFullScreen();
 
         // Tamaño de la ventana: el de la pestaña ahora (mas el marco), o el que tuvo la ultima vez.
         var width = Math.Max(SessionPlacement.MinWidth, TabsArea.ActualWidth + 16);
@@ -1218,8 +1260,7 @@ public partial class MainWindow : Window
     {
         if (open.Window is not { } window || !_open.Contains(open))
             return;
-        if (open.Session is RdpSession { IsFullScreen: true })
-            open.Session.LeaveFullScreen();
+        open.Session.LeaveFullScreen();
 
         CloseDetachedWindow(open, window, keepParts: true, out var view, out var header);
         _settings.Save();
@@ -1283,15 +1324,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnTabsPreviewMouseMove(object sender, MouseEventArgs e)
+    private void OnTabsPreviewMouseMove(object sender, MouseEventArgs e) => TabsMouseMove(e.GetPosition(this), e.LeftButton == MouseButtonState.Pressed);
+
+    /// <summary>Con el boton pulsado sobre una cabecera y pasado el umbral, empieza a arrastrar la pestaña.</summary>
+    internal void TabsMouseMove(Point position, bool leftPressed)
     {
-        if (_tabDragStart is not { } start || e.LeftButton != MouseButtonState.Pressed || Find(_tabDragItem) is not { } open)
+        if (_tabDragStart is not { } start || !leftPressed || Find(_tabDragItem) is not { } open)
             return;
         // Capturado desde el primer movimiento: aunque el raton salga deprisa de la cabecera, el
         // arrastre empieza. Se suelta antes de arrastrar (y al soltar el boton).
         if (!Tabs.IsMouseCaptured)
-            Tabs.CaptureMouse();
-        var delta = e.GetPosition(this) - start;
+            Desktop.Current.CaptureMouse(Tabs);
+        var delta = position - start;
         if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
             return;
         _tabDragStart = null;
@@ -1304,8 +1348,7 @@ public partial class MainWindow : Window
     {
         _tabDragStart = null;
         _tabDragItem = null;
-        if (Tabs.IsMouseCaptured)
-            Tabs.ReleaseMouseCapture();
+        Tabs.ReleaseMouseCapture();   // si no lo tiene, no hace nada
     }
 
     /// <summary>
@@ -1325,7 +1368,7 @@ public partial class MainWindow : Window
         source.QueryContinueDrag += Query;
         try
         {
-            DragDrop.DoDragDrop(source, new DataObject(SessionDragFormat, open.Connection.Id.ToString()), DragDropEffects.Move);
+            Desktop.Current.DoDragDrop(source, new DataObject(SessionDragFormat, open.Connection.Id.ToString()), DragDropEffects.Move);
         }
         finally
         {
@@ -1333,8 +1376,8 @@ public partial class MainWindow : Window
             // Que ninguna captura se quede colgada: se comeria los clics de las otras ventanas.
             Mouse.Capture(null);
         }
-        GetCursorPos(out var p);
-        var root = GetAncestor(WindowFromPoint(p), 2 /* GA_ROOT */);
+        var p = Desktop.Current.CursorPosition();
+        var root = Desktop.Current.RootWindowAt(p.X, p.Y);
         var mainHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         var overDetached = _open.Any(x => x.Window is { } w && new System.Windows.Interop.WindowInteropHelper(w).Handle == root);
         var action = SessionPlacement.AfterDrag(open.IsDetached, cancelled, _dropInMain || root == mainHwnd, overDetached);
@@ -1386,7 +1429,7 @@ public partial class MainWindow : Window
     private List<ScreenArea> ScreenAreas()
     {
         var list = new List<ScreenArea>();
-        foreach (var s in System.Windows.Forms.Screen.AllScreens.OrderByDescending(s => s.Primary))
+        foreach (var s in Desktop.Current.Monitors().OrderByDescending(s => s.Primary))
         {
             var tl = ToDip(s.WorkingArea.Left, s.WorkingArea.Top);
             var br = ToDip(s.WorkingArea.Right, s.WorkingArea.Bottom);
@@ -1437,23 +1480,9 @@ public partial class MainWindow : Window
         }
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
-        if (!activate)
-            return;
-        Activate();
-        // Por si Windows no deja pasar al frente: un instante encima de todo.
-        Topmost = true;
-        Topmost = false;
-        SetForegroundWindow(new System.Windows.Interop.WindowInteropHelper(this).Handle);
-        Focus();
+        if (activate)
+            Desktop.Current.ForceForeground(this);
     }
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct NativePoint { public int X, Y; }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool GetCursorPos(out NativePoint p);
-    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(NativePoint p);
-    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
-    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hwnd);
 
     // =====================================================================
 

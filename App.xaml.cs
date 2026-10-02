@@ -10,6 +10,20 @@ public partial class App : Application
     /// <summary>Las pruebas crean la App solo por sus recursos (estilos, colores): sin arrancar nada.</summary>
     internal static bool SkipStartup { get; set; }
 
+    public App()
+    {
+        ShutdownApp = Shutdown;
+    }
+
+    /// <summary>Cerrar la aplicacion (las pruebas lo cambian: alli no se puede cerrar el hilo de interfaz).</summary>
+    internal Action ShutdownApp { get; set; }
+
+    /// <summary>La instancia unica de este usuario y sesion (las pruebas le dan un nombre propio).</summary>
+    internal Func<SingleInstance> CreateSingleInstance { get; set; } = () => new SingleInstance(SingleInstance.NameFor(Sandbox.Folder));
+
+    /// <summary>Cuanto se espera a que el hilo de la interfaz atienda a otra instancia antes de dejarla arrancar.</summary>
+    internal TimeSpan OtherInstanceTimeout { get; set; } = TimeSpan.FromSeconds(2);
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -26,31 +40,21 @@ public partial class App : Application
         // Un error que no se esperaba no puede cerrar la aplicacion (constitucion general, 6.12):
         // se apunta en el registro con la traza y se avisa en el idioma del usuario. Las sesiones
         // abiertas siguen vivas.
-        DispatcherUnhandledException += (_, ex) =>
-        {
-            AppLog.Write($"error no controlado: {ex.Exception}");
-            ex.Handled = true;
-            ShowUnexpectedError();
-        };
-        TaskScheduler.UnobservedTaskException += (_, ex) =>
-        {
-            AppLog.Write($"error no controlado en tarea: {ex.Exception}");
-            ex.SetObserved();
-        };
-        AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
-            AppLog.Write($"error fatal: {ex.ExceptionObject}");
+        DispatcherUnhandledException += OnDispatcherError;
+        TaskScheduler.UnobservedTaskException += OnTaskError;
+        AppDomain.CurrentDomain.UnhandledException += OnFatalError;
 
         // Una sola instancia (constitucion general 8.3): si ya hay una abierta, aunque este en el area
         // de notificacion, se le pasa lo pedido (ponerse delante, --open...) y esta se cierra. Si no
         // contesta en un par de segundos, esta arranca igual.
-        _single = new SingleInstance(SingleInstance.NameFor(Sandbox.Folder));
+        _single = CreateSingleInstance();
         var outcome = _single.Start(new SingleInstance.Request(MyVersion.ToString(), commandLine, Environment.ProcessPath),
             patience: TimeSpan.FromSeconds(5), ackTimeout: TimeSpan.FromSeconds(2.5));
         if (outcome == SingleInstance.Outcome.HandedOver)
         {
             _single.Dispose();
             _single = null;
-            Shutdown();
+            ShutdownApp();
             return;
         }
         if (outcome == SingleInstance.Outcome.StartAnyway)
@@ -72,10 +76,13 @@ public partial class App : Application
             window.Width = s.Width;
             window.Height = s.Height;
         }
-        if (args.Tray)
+        // --tray con algo que hacer (--open, --edit...) se enseña, como cuando lo pide otra instancia:
+        // escondida sin haberse enseñado nunca no puede ser dueña de un dialogo (la contraseña, el
+        // editor) y WPF lanzaba.
+        if (!args.ShowsExisting)
             window.StartInTray();
         else
-            window.Show();
+            Dialogs.ShowWindow(window);
         Run(window, args);
 
         if (outcome == SingleInstance.Outcome.First)
@@ -84,10 +91,29 @@ public partial class App : Application
 
     private SingleInstance? _single;
 
-    private static Version MyVersion => typeof(App).Assembly.GetName().Version ?? new Version(0, 0);
+    /// <summary>La instancia unica de este arranque (null si se ha cedido o cerrado).</summary>
+    internal SingleInstance? Instance => _single;
+
+    internal void OnDispatcherError(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        AppLog.Write($"error no controlado: {e.Exception}");
+        e.Handled = true;
+        ShowUnexpectedError();
+    }
+
+    internal static void OnTaskError(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        AppLog.Write($"error no controlado en tarea: {e.Exception}");
+        e.SetObserved();
+    }
+
+    internal static void OnFatalError(object sender, UnhandledExceptionEventArgs e) =>
+        AppLog.Write($"error fatal: {e.ExceptionObject}");
+
+    internal static Version MyVersion => typeof(App).Assembly.GetName().Version ?? new Version(0, 0);
 
     /// <summary>Lo que piden los argumentos (al arrancar, o lo que manda otra instancia).</summary>
-    private static void Run(MainWindow window, StartupArgs args)
+    internal static void Run(MainWindow window, StartupArgs args)
     {
         foreach (var name in args.Open)
             window.OpenByName(name);
@@ -103,10 +129,10 @@ public partial class App : Application
     /// esta no responde en dos segundos (un dialogo no la bloquea, un cuelgue si), no se contesta y la
     /// otra arranca igual.
     /// </summary>
-    private (SingleInstance.Reply? Reply, Action? After) OnOtherInstance(SingleInstance.Request request)
+    internal (SingleInstance.Reply? Reply, Action? After) OnOtherInstance(SingleInstance.Request request)
     {
         var op = Dispatcher.InvokeAsync(() => HandleOtherInstance(request));
-        if (!op.Task.Wait(TimeSpan.FromSeconds(2)))
+        if (!op.Task.Wait(OtherInstanceTimeout))
         {
             op.Abort();
             return (null, null);
@@ -114,7 +140,7 @@ public partial class App : Application
         return op.Result;
     }
 
-    private (SingleInstance.Reply? Reply, Action? After) HandleOtherInstance(SingleInstance.Request request)
+    internal (SingleInstance.Reply? Reply, Action? After) HandleOtherInstance(SingleInstance.Request request)
     {
         if (MainWindow is not MainWindow window)
             return (null, null);
@@ -125,7 +151,7 @@ public partial class App : Application
             case SingleInstance.Answer.Yield:
                 // Manda la version nueva y aqui no hay nada abierto: esta se cierra y la otra sigue.
                 AppLog.Write($"instancia unica: se abre la {theirs} y esta es la {MyVersion}; se le deja el sitio");
-                return (SingleInstance.Reply.Yield, () => Dispatcher.BeginInvoke(() => { window.CloseForced(); Shutdown(); }));
+                return (SingleInstance.Reply.Yield, () => Dispatcher.BeginInvoke(() => { window.CloseForced(); ShutdownApp(); }));
 
             case SingleInstance.Answer.ShowAndOfferUpdate:
                 window.BringToFront();
@@ -144,7 +170,7 @@ public partial class App : Application
     /// Se ha abierto una version mas nueva y esta tiene sesiones abiertas: no se cortan sin preguntar.
     /// Si se acepta, esta se cierra y arranca la nueva con lo que se le pidio.
     /// </summary>
-    private void OfferNewerVersion(MainWindow window, SingleInstance.Request request, Version theirs)
+    internal void OfferNewerVersion(MainWindow window, SingleInstance.Request request, Version theirs)
     {
         if (!PromptWindow.Confirm(window, Loc.Get("NewerInstanceTitle"), Loc.Format("NewerInstanceText", theirs, MyVersion, window.OpenSessionCount),
                 Loc.Get("NewerInstanceOk"), ""))
@@ -166,7 +192,7 @@ public partial class App : Application
         {
             AppLog.Write($"no se pudo abrir la version nueva: {ex}");
         }
-        Shutdown();
+        ShutdownApp();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -181,7 +207,7 @@ public partial class App : Application
     /// Aviso de un error inesperado. Uno cada vez: si el mismo fallo se repite mientras el aviso
     /// esta abierto (un temporizador, un redibujado), no se apilan ventanas.
     /// </summary>
-    private void ShowUnexpectedError()
+    internal void ShowUnexpectedError()
     {
         if (_showingError) return;
         _showingError = true;
