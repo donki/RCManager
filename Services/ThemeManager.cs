@@ -68,17 +68,25 @@ public static class ThemeManager
     }
 
     /// <summary>Si Windows tiene puesto el modo oscuro para las aplicaciones.</summary>
-    internal static bool PrefersDark()
+    internal static bool PrefersDark() => PrefersDark(ReadAppsUseLightTheme);
+
+    /// <summary>Con lo que diga <c>AppsUseLightTheme</c> (0 = oscuro). Si no se puede leer, claro.</summary>
+    internal static bool PrefersDark(Func<object?> readAppsUseLightTheme)
     {
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(PersonalizeKey);
-            return key?.GetValue("AppsUseLightTheme") is int value && value == 0;
+            return readAppsUseLightTheme() is int value && value == 0;
         }
         catch (Exception)
         {
             return false;
         }
+    }
+
+    private static object? ReadAppsUseLightTheme()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(PersonalizeKey);
+        return key?.GetValue("AppsUseLightTheme");
     }
 
     private static void Set(ResourceDictionary resources, string key, string hex) =>

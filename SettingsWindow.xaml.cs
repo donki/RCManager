@@ -129,7 +129,15 @@ public partial class SettingsWindow : Window
     private async Task SyncNowAsync()
     {
         SetBusy(true);
-        void OnStatus(string s) => Dispatcher.BeginInvoke(() => StatusText.Text = s);
+        // Desde este hilo, al momento: si se encolara, un aviso dado antes de un fallo inmediato
+        // (sin cuenta, por ejemplo) taparia el mensaje del fallo. Desde otro hilo, en orden.
+        void OnStatus(string s)
+        {
+            if (Dispatcher.CheckAccess())
+                StatusText.Text = s;
+            else
+                Dispatcher.BeginInvoke(() => StatusText.Text = s);
+        }
         _sync.Status += OnStatus;
         try
         {
