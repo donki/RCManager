@@ -20,16 +20,19 @@ public sealed class TextEditorWindow : Window
     private readonly FileEntry _entry;
     private readonly Encoding _encoding;
     private readonly bool _crlf;
-    private readonly TextBox _text;
-    private readonly TextBox _find;
-    private readonly Border _findBar;
-    private readonly TextBlock _status;
+    internal readonly TextBox _text;
+    internal readonly TextBox _find;
+    internal readonly Border _findBar;
+    internal readonly TextBlock _status;
     private bool _dirty;
+
+    /// <summary>Hay cambios sin guardar.</summary>
+    internal bool IsDirty => _dirty;
 
     public event Action? Saved;
 
     /// <summary>Letra del editor; se guarda para la proxima vez (es un ajuste de la aplicacion, no de la conexion).</summary>
-    private void SetFontSize(double size)
+    internal void SetFontSize(double size)
     {
         _text.FontSize = Math.Clamp(size, 9, 28);
         if (AppSettings.Current is { } settings)
@@ -60,8 +63,10 @@ public sealed class TextEditorWindow : Window
         // Barra de arriba: ruta, guardar, buscar.
         var top = new DockPanel { Margin = new Thickness(10, 8, 10, 4) };
         var save = new Button { Style = (Style)FindResource("IconButton"), Content = "", ToolTip = Loc.Get("EditorSave"), Margin = new Thickness(0, 0, 6, 0) };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(save, "EditorSaveButton");
         save.Click += async (_, _) => await SaveAsync();
         var findButton = new Button { Style = (Style)FindResource("GhostIconButton"), Content = "", ToolTip = Loc.Get("EditorFind") };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(findButton, "EditorFindButton");
         findButton.Click += (_, _) => ShowFind();
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         buttons.Children.Add(save);
@@ -74,17 +79,16 @@ public sealed class TextEditorWindow : Window
 
         // Buscador (Ctrl+F): escondido hasta que hace falta.
         _find = new TextBox { Style = (Style)FindResource("Field"), Width = 260, Height = 30, Margin = new Thickness(0, 0, 6, 0) };
-        _find.KeyDown += (_, e) =>
-        {
-            if (e.Key == Key.Enter) { FindNext((Keyboard.Modifiers & ModifierKeys.Shift) != 0); e.Handled = true; }
-            else if (e.Key == Key.Escape) { _findBar.Visibility = Visibility.Collapsed; _text.Focus(); e.Handled = true; }
-        };
+        _find.KeyDown += (_, e) => { if (OnFindKey(e.Key, Keyboard.Modifiers)) e.Handled = true; };
         var prev = new Button { Style = (Style)FindResource("GhostIconButton"), Content = "", ToolTip = Loc.Get("EditorFindPrev") };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(prev, "EditorFindPrevButton");
         prev.Click += (_, _) => FindNext(backwards: true);
         var next = new Button { Style = (Style)FindResource("GhostIconButton"), Content = "", ToolTip = Loc.Get("EditorFindNext") };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(next, "EditorFindNextButton");
         next.Click += (_, _) => FindNext(backwards: false);
         var close = new Button { Style = (Style)FindResource("GhostIconButton"), Content = "", ToolTip = Loc.Get("Close") };
-        close.Click += (_, _) => { _findBar.Visibility = Visibility.Collapsed; _text.Focus(); };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(close, "EditorFindCloseButton");
+        close.Click += (_, _) => HideFind();
         var findPanel = new StackPanel { Orientation = Orientation.Horizontal };
         findPanel.Children.Add(new TextBlock { Text = Loc.Get("EditorFind"), Style = (Style)FindResource("HintText"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
         findPanel.Children.Add(_find);
@@ -125,15 +129,7 @@ public sealed class TextEditorWindow : Window
         Content = root;
         UpdateStatus();
 
-        PreviewKeyDown += async (_, e) =>
-        {
-            if ((Keyboard.Modifiers & ModifierKeys.Control) == 0)
-                return;
-            if (e.Key == Key.S) { e.Handled = true; await SaveAsync(); }
-            else if (e.Key == Key.F) { e.Handled = true; ShowFind(); }
-            else if (e.Key == Key.OemPlus || e.Key == Key.Add) { e.Handled = true; SetFontSize(_text.FontSize + 1); }
-            else if (e.Key == Key.OemMinus || e.Key == Key.Subtract) { e.Handled = true; SetFontSize(_text.FontSize - 1); }
-        };
+        PreviewKeyDown += (_, e) => { if (OnShortcut(e.Key, Keyboard.Modifiers)) e.Handled = true; };
         Closing += (_, e) =>
         {
             if (!_dirty)
@@ -167,7 +163,30 @@ public sealed class TextEditorWindow : Window
         }
     }
 
-    private async Task SaveAsync(bool thenClose = false)
+    /// <summary>Atajos con Ctrl: S guarda, F busca, + y - cambian la letra. true si era uno de ellos.</summary>
+    internal bool OnShortcut(Key key, ModifierKeys modifiers)
+    {
+        if ((modifiers & ModifierKeys.Control) == 0)
+            return false;
+        switch (key)
+        {
+            case Key.S: _ = SaveAsync(); return true;
+            case Key.F: ShowFind(); return true;
+            case Key.OemPlus or Key.Add: SetFontSize(_text.FontSize + 1); return true;
+            case Key.OemMinus or Key.Subtract: SetFontSize(_text.FontSize - 1); return true;
+            default: return false;
+        }
+    }
+
+    /// <summary>Teclas en la casilla de buscar: Intro busca (con Mayus, hacia atras), Esc cierra el buscador.</summary>
+    internal bool OnFindKey(Key key, ModifierKeys modifiers)
+    {
+        if (key == Key.Enter) { FindNext((modifiers & ModifierKeys.Shift) != 0); return true; }
+        if (key == Key.Escape) { HideFind(); return true; }
+        return false;
+    }
+
+    internal async Task SaveAsync(bool thenClose = false)
     {
         var temp = Path.Combine(Path.GetTempPath(), "sOCRCManager", "editor", Guid.NewGuid().ToString("N"));
         try
@@ -195,11 +214,21 @@ public sealed class TextEditorWindow : Window
     {
         var line = Math.Max(0, _text.GetLineIndexFromCharacterIndex(_text.CaretIndex));
         var col = Math.Max(0, _text.CaretIndex - Math.Max(0, _text.GetCharacterIndexFromLineIndex(line)));
-        _status.Text = $"{(_dirty ? "● " : string.Empty)}{Loc.Format("EditorPosition", line + 1, col + 1)}  ·  {(_encoding is UTF8Encoding ? "UTF-8" : "Latin-1")}  ·  {(_crlf ? "CRLF" : "LF")}{(note is null ? string.Empty : "  ·  " + note)}";
+        _status.Text = StatusText(_dirty, line, col, _encoding, _crlf, note);
         Title = (_dirty ? "● " : string.Empty) + _entry.Name;
     }
 
-    private void ShowFind()
+    /// <summary>La linea de estado: «● » si hay cambios, linea y columna (desde 0), codificacion, finales de linea y una nota.</summary>
+    internal static string StatusText(bool dirty, int line, int column, Encoding encoding, bool crlf, string? note) =>
+        $"{(dirty ? "● " : string.Empty)}{Loc.Format("EditorPosition", line + 1, column + 1)}  ·  {(encoding is UTF8Encoding ? "UTF-8" : "Latin-1")}  ·  {(crlf ? "CRLF" : "LF")}{(note is null ? string.Empty : "  ·  " + note)}";
+
+    private void HideFind()
+    {
+        _findBar.Visibility = Visibility.Collapsed;
+        _text.Focus();
+    }
+
+    internal void ShowFind()
     {
         _findBar.Visibility = Visibility.Visible;
         if (_text.SelectionLength > 0 && !_text.SelectedText.Contains('\n'))
@@ -208,25 +237,12 @@ public sealed class TextEditorWindow : Window
         _find.SelectAll();
     }
 
-    private void FindNext(bool backwards)
+    internal void FindNext(bool backwards)
     {
         var needle = _find.Text;
         if (needle.Length == 0)
             return;
-        var text = _text.Text;
-        int index;
-        if (backwards)
-        {
-            var from = Math.Max(0, _text.SelectionStart - 1);
-            index = from > 0 ? text.LastIndexOf(needle, from, StringComparison.CurrentCultureIgnoreCase) : -1;
-            if (index < 0) index = text.LastIndexOf(needle, StringComparison.CurrentCultureIgnoreCase);
-        }
-        else
-        {
-            var from = _text.SelectionStart + _text.SelectionLength;
-            index = text.IndexOf(needle, Math.Min(from, text.Length), StringComparison.CurrentCultureIgnoreCase);
-            if (index < 0) index = text.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase);
-        }
+        var index = TextSearch.Find(_text.Text, needle, _text.SelectionStart, _text.SelectionLength, backwards);
         if (index < 0)
         {
             _status.Text = Loc.Format("EditorNotFound", needle);
@@ -259,9 +275,12 @@ public sealed class SaveQuestionWindow : Window
         card.Child = new TextBlock { Text = Loc.Format("EditorUnsaved", name), TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("TextPrimary") };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
         var discard = new Button { Style = (Style)FindResource("OutlineButton"), Content = Loc.Get("EditorDiscard"), Margin = new Thickness(0, 0, 8, 0) };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(discard, "DiscardButton");
         discard.Click += (_, _) => { _answer = false; DialogResult = true; };
         var cancel = new Button { Style = (Style)FindResource("GhostIconButton"), Content = "", ToolTip = Loc.Get("Cancel"), IsCancel = true, Margin = new Thickness(0, 0, 8, 0) };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(cancel, "CancelButton");
         var save = new Button { Style = (Style)FindResource("IconButton"), Content = "", ToolTip = Loc.Get("EditorSave"), IsDefault = true };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(save, "SaveButton");
         save.Click += (_, _) => { _answer = true; DialogResult = true; };
         buttons.Children.Add(discard);
         buttons.Children.Add(cancel);

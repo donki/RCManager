@@ -13,11 +13,11 @@ namespace SocRcManager.Files;
 /// </summary>
 public sealed class PermissionsWindow : Window
 {
-    private readonly CheckBox[] _bits = new CheckBox[9];
-    private readonly TextBox _octal;
-    private readonly TextBox _owner;
-    private readonly TextBox _group;
-    private readonly CheckBox _recursive;
+    internal readonly CheckBox[] _bits = new CheckBox[9];
+    internal readonly TextBox _octal;
+    internal readonly TextBox _owner;
+    internal readonly TextBox _group;
+    internal readonly CheckBox _recursive;
     private bool _syncing;
 
     public int? Mode { get; private set; }
@@ -125,6 +125,8 @@ public sealed class PermissionsWindow : Window
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
         var cancel = new Button { Style = (Style)FindResource("GhostIconButton"), Content = "", ToolTip = Loc.Get("Cancel"), IsCancel = true };
         var ok = new Button { Style = (Style)FindResource("IconButton"), Content = "", ToolTip = Loc.Get("PermsApply"), IsDefault = true };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(cancel, "CancelButton");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(ok, "OkButton");
         ok.Click += (_, _) =>
         {
             Change = PermissionChange.From(Mode, originalMode, OwnerName, originalOwner, GroupName, originalGroup, Recursive);
