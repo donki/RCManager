@@ -44,7 +44,8 @@ public sealed class TerminalControl : FrameworkElement
     private Brush _defaultFg = Brushes.Gainsboro;
     private Brush _defaultBg = new SolidColorBrush(Color.FromRgb(0x1B, 0x1B, 0x22));
 
-    private (int Row, int Col)? _selStart, _selEnd;
+    private readonly TerminalSelection _selection = new();
+    private bool _selecting;   // arrastrando con el boton izquierdo para seleccionar
 
     public TerminalControl()
     {
@@ -144,6 +145,24 @@ public sealed class TerminalControl : FrameworkElement
 
     private TerminalCell CellAt(int r, int c) => _buffer.CellAt(r, c, _viewOffset);
 
+    /// <summary>Filas del historial que se ven por encima de la pantalla (0 = la pantalla en vivo).</summary>
+    internal int ViewOffset => _viewOffset;
+
+    /// <summary>Medidas de una celda con la letra actual.</summary>
+    internal (double Width, double Height) CellSize => (_cellW, _cellH);
+
+    /// <summary>La seleccion con el raton.</summary>
+    internal TerminalSelection Selection => _selection;
+
+    /// <summary>El texto de una fila tal como se ve (con el desplazamiento del historial).</summary>
+    internal string RowText(int row)
+    {
+        var sb = new StringBuilder();
+        for (var c = 0; c < _buffer.Cols; c++)
+            sb.Append(CellAt(row, c).Ch);
+        return sb.ToString().TrimEnd();
+    }
+
     protected override void OnRender(DrawingContext dc)
     {
         dc.DrawRectangle(_defaultBg, null, new Rect(0, 0, ActualWidth, ActualHeight));
@@ -157,14 +176,16 @@ public sealed class TerminalControl : FrameworkElement
             {
                 var cell = CellAt(r, c);
                 var start = c;
+                // El tramo se corta tambien donde empieza o acaba la seleccion: si no, un trozo
+                // seleccionado dentro de un texto del mismo color no se resaltaba.
+                var selected = _selection.Covers(r, c, c, _buffer.Cols);
                 sb.Clear();
-                while (c < _buffer.Cols && TerminalCell.SameStyle(CellAt(r, c), cell))
+                while (c < _buffer.Cols && TerminalCell.SameStyle(CellAt(r, c), cell) && _selection.Covers(r, c, c, _buffer.Cols) == selected)
                 {
                     sb.Append(CellAt(r, c).Ch);
                     c++;
                 }
 
-                var selected = IsSelected(r, start, c - 1);
                 var fg = BrushFor(cell.Inverse ? cell.Bg : cell.Fg, !cell.Inverse, cell.Bold);
                 var bg = BrushFor(cell.Inverse ? cell.Fg : cell.Bg, cell.Inverse, false);
                 if (cell.Inverse && cell.Bg < 0) fg = _defaultBg;
@@ -213,131 +234,131 @@ public sealed class TerminalControl : FrameworkElement
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
-        var shift = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
-        var alt = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
-
-        if (ctrl && shift && e.Key == Key.V) { Paste(); e.Handled = true; return; }
-        if (ctrl && shift && e.Key == Key.C) { CopySelection(); e.Handled = true; return; }
-
-        var seq = e.Key switch
-        {
-            Key.Enter => "\r",
-            Key.Back => "\x7f",
-            Key.Tab => "\t",
-            Key.Escape => "\x1b",
-            Key.Up => _buffer.AppCursorKeys ? "\x1bOA" : "\x1b[A",
-            Key.Down => _buffer.AppCursorKeys ? "\x1bOB" : "\x1b[B",
-            Key.Right => _buffer.AppCursorKeys ? "\x1bOC" : "\x1b[C",
-            Key.Left => _buffer.AppCursorKeys ? "\x1bOD" : "\x1b[D",
-            Key.Home => "\x1b[H",
-            Key.End => "\x1b[F",
-            Key.Insert => "\x1b[2~",
-            Key.Delete => "\x1b[3~",
-            Key.PageUp => shift ? null : "\x1b[5~",
-            Key.PageDown => shift ? null : "\x1b[6~",
-            Key.F1 => "\x1bOP", Key.F2 => "\x1bOQ", Key.F3 => "\x1bOR", Key.F4 => "\x1bOS",
-            Key.F5 => "\x1b[15~", Key.F6 => "\x1b[17~", Key.F7 => "\x1b[18~", Key.F8 => "\x1b[19~",
-            Key.F9 => "\x1b[20~", Key.F10 => "\x1b[21~", Key.F11 => "\x1b[23~", Key.F12 => "\x1b[24~",
-            _ => null,
-        };
-
-        if (shift && e.Key == Key.PageUp) { _viewOffset = Math.Min(_buffer.ScrollbackCount, _viewOffset + _buffer.Rows / 2); InvalidateVisual(); e.Handled = true; return; }
-        if (shift && e.Key == Key.PageDown) { _viewOffset = Math.Max(0, _viewOffset - _buffer.Rows / 2); InvalidateVisual(); e.Handled = true; return; }
-
-        if (seq is not null)
-        {
-            Send(seq);
+        if (HandleKey(e.Key, Keyboard.Modifiers))
             e.Handled = true;
-            return;
-        }
+    }
 
-        // Ctrl+letra: codigo de control (Ctrl+C = 3, Ctrl+D = 4, Ctrl+Z = 26, Ctrl+L = 12...).
-        if (ctrl && !alt && e.Key >= Key.A && e.Key <= Key.Z)
-        {
-            Send(((char)(e.Key - Key.A + 1)).ToString());
-            e.Handled = true;
-            return;
-        }
+    /// <summary>Una tecla pulsada con esos modificadores. Devuelve si el terminal la ha usado.</summary>
+    internal bool HandleKey(Key key, ModifierKeys modifiers)
+    {
+        var ctrl = (modifiers & ModifierKeys.Control) != 0;
+        var shift = (modifiers & ModifierKeys.Shift) != 0;
+        var alt = (modifiers & ModifierKeys.Alt) != 0;
 
-        if (ctrl && e.Key == Key.Space) { Send("\0"); e.Handled = true; }
-        if (ctrl && e.Key == Key.OemOpenBrackets) { Send("\x1b"); e.Handled = true; }
+        if (ctrl && shift && key == Key.V) { Paste(); return true; }
+        if (ctrl && shift && key == Key.C) { CopySelection(); return true; }
+        // Mayus+RePag / Mayus+AvPag: media pantalla del historial arriba o abajo.
+        if (shift && key == Key.PageUp) { ScrollView(_buffer.Rows / 2); return true; }
+        if (shift && key == Key.PageDown) { ScrollView(-_buffer.Rows / 2); return true; }
+
+        if (TerminalKeys.Sequence(key, ctrl, shift, alt, _buffer.AppCursorKeys) is not { } seq)
+            return false;
+        Send(seq);
+        return true;
+    }
+
+    private void ScrollView(int rows)
+    {
+        _viewOffset = Math.Clamp(_viewOffset + rows, 0, _buffer.ScrollbackCount);
+        InvalidateVisual();
     }
 
     protected override void OnMouseWheel(MouseWheelEventArgs e)
     {
         base.OnMouseWheel(e);
-        _viewOffset = Math.Clamp(_viewOffset + (e.Delta > 0 ? 3 : -3), 0, _buffer.ScrollbackCount);
-        InvalidateVisual();
+        Wheel(e.Delta);
         e.Handled = true;
     }
+
+    /// <summary>La rueda: tres filas del historial por paso.</summary>
+    internal void Wheel(int delta) => ScrollView(delta > 0 ? 3 : -3);
 
     protected override void OnMouseDown(MouseButtonEventArgs e)
     {
         base.OnMouseDown(e);
-        Focus();
-        if (e.ChangedButton == MouseButton.Right)
-        {
-            if (_selStart is not null && _selEnd is not null) CopySelection();
-            else Paste();
+        if (PointerDown(e.ChangedButton, e.GetPosition(this)))
             e.Handled = true;
-            return;
+    }
+
+    /// <summary>
+    /// Pulsar en el terminal: el derecho copia la seleccion o, si no la hay, pega; el izquierdo
+    /// empieza a seleccionar. Devuelve si el clic queda usado.
+    /// </summary>
+    internal bool PointerDown(MouseButton button, Point position)
+    {
+        Focus();
+        if (button == MouseButton.Right)
+        {
+            if (_selection.IsActive) CopySelection();
+            else Paste();
+            return true;
         }
 
-        if (e.ChangedButton == MouseButton.Left)
+        if (button == MouseButton.Left)
         {
-            _selStart = _selEnd = CellFromPoint(e.GetPosition(this));
+            _selection.Begin(CellFromPoint(position));
+            _selecting = true;
             CaptureMouse();
             InvalidateVisual();
         }
+        return false;
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        if (IsMouseCaptured && e.LeftButton == MouseButtonState.Pressed)
-        {
-            _selEnd = CellFromPoint(e.GetPosition(this));
-            InvalidateVisual();
-        }
+        if (e.LeftButton == MouseButtonState.Pressed)
+            PointerMove(e.GetPosition(this));
+    }
+
+    /// <summary>Arrastrar con el izquierdo pulsado: la seleccion llega hasta aqui.</summary>
+    internal void PointerMove(Point position)
+    {
+        if (!_selecting)
+            return;
+        _selection.Extend(CellFromPoint(position));
+        InvalidateVisual();
     }
 
     protected override void OnMouseUp(MouseButtonEventArgs e)
     {
         base.OnMouseUp(e);
-        if (IsMouseCaptured)
-        {
-            ReleaseMouseCapture();
-            if (_selStart == _selEnd) { _selStart = _selEnd = null; InvalidateVisual(); }
-        }
+        PointerUp();
+    }
+
+    /// <summary>Soltar: si no se ha movido de celda, no queda nada seleccionado.</summary>
+    internal void PointerUp()
+    {
+        if (!_selecting)
+            return;
+        _selecting = false;
+        ReleaseMouseCapture();
+        if (!_selection.Finish())
+            InvalidateVisual();
+    }
+
+    // Si otro se queda el raton a medio arrastre, la seleccion se queda donde estaba.
+    protected override void OnLostMouseCapture(MouseEventArgs e)
+    {
+        base.OnLostMouseCapture(e);
+        _selecting = false;
     }
 
     private (int Row, int Col) CellFromPoint(Point p) =>
         (Math.Clamp((int)(p.Y / _cellH), 0, _buffer.Rows - 1), Math.Clamp((int)(p.X / _cellW), 0, _buffer.Cols - 1));
 
-    private bool IsSelected(int row, int fromCol, int toCol)
-    {
-        if (_selStart is null || _selEnd is null) return false;
-        var (a, b) = Ordered();
-        if (row < a.Row || row > b.Row) return false;
-        var lo = row == a.Row ? a.Col : 0;
-        var hi = row == b.Row ? b.Col : _buffer.Cols - 1;
-        return fromCol >= lo && toCol <= hi;
-    }
+    /// <summary>Portapapeles: leer texto (null si no hay) y escribirlo. Las pruebas no tocan el de Windows.</summary>
+    internal static Func<string?> ReadClipboard { get; set; } = () => Clipboard.ContainsText() ? Clipboard.GetText() : null;
 
-    private ((int Row, int Col) a, (int Row, int Col) b) Ordered()
-    {
-        var s = _selStart!.Value; var e = _selEnd!.Value;
-        return s.Row < e.Row || (s.Row == e.Row && s.Col <= e.Col) ? (s, e) : (e, s);
-    }
+    internal static Action<string> WriteClipboard { get; set; } = Clipboard.SetText;
 
     private void CopySelection()
     {
-        if (_selStart is null || _selEnd is null) return;
-        var (a, b) = Ordered();
+        if (!_selection.IsActive) return;
+        var (a, b) = _selection.Ordered();
         var text = _buffer.TextBetween(a, b, _viewOffset);
-        try { Clipboard.SetText(text); } catch (Exception) { }
-        _selStart = _selEnd = null;
+        try { WriteClipboard(text); } catch (Exception) { }
+        _selection.Clear();
         InvalidateVisual();
     }
 
@@ -345,13 +366,13 @@ public sealed class TerminalControl : FrameworkElement
     {
         try
         {
-            if (Clipboard.ContainsText())
-                Send(Clipboard.GetText().Replace("\r\n", "\r").Replace('\n', '\r'));
+            if (ReadClipboard() is { } text)
+                Send(text.Replace("\r\n", "\r").Replace('\n', '\r'));
         }
         catch (Exception) { }
     }
 
     // El texto seleccionado deja de estarlo con la siguiente salida: la seleccion se quita
     // al escribir para no dejar un resalte viejo sobre texto nuevo.
-    public void ClearSelection() { _selStart = _selEnd = null; }
+    public void ClearSelection() => _selection.Clear();
 }

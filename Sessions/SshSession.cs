@@ -1,9 +1,6 @@
 ﻿using System.IO;
 using System.Windows;
-using System.Windows.Controls;
 using SocRcManager.Models;
-using SocRcManager.Services;
-using Renci.SshNet;
 
 namespace SocRcManager.Sessions;
 
@@ -15,29 +12,39 @@ namespace SocRcManager.Sessions;
 /// <para>Se entra con contraseña o con clave privada (fichero OpenSSH o PEM). La contraseña
 /// guardada se descifra solo para abrir la sesion y no se conserva en memoria mas alla.</para>
 ///
-/// <para>La conexion se hace fuera del hilo de la interfaz; lo que llega del servidor se vuelca
-/// al terminal en el despachador, en trozos, para no bloquear el pintado con salidas grandes.</para>
+/// <para>La conexion se hace fuera del hilo de la interfaz (<see cref="SshShell"/>); lo que llega
+/// del servidor se vuelca al terminal en el despachador, en trozos, para no bloquear el pintado con
+/// salidas grandes.</para>
 /// </remarks>
 public sealed class SshSession : ISession
 {
     private readonly Connection _connection;
+    private readonly Func<Connection, string, int, int, Task<ISshShell>> _open;
     private readonly TerminalControl _terminal = new();
-    private SshClient? _client;
-    private ShellStream? _shell;
+    private ISshShell? _client;
+    private Stream? _shell;
     private CancellationTokenSource? _reader;
 
-    public SshSession(Connection connection)
+    public SshSession(Connection connection) : this(connection, SshShell.ConnectAsync)
+    {
+    }
+
+    /// <param name="open">Abre el shell (conexion, usuario y contraseña, columnas, filas).</param>
+    internal SshSession(Connection connection, Func<Connection, string, int, int, Task<ISshShell>> open)
     {
         _connection = connection;
+        _open = open;
         View = _terminal;
         _terminal.FontSize = Math.Clamp(connection.FontSize, 9, 28);
-        _terminal.Input += bytes =>
-        {
-            try { _shell?.Write(bytes); _shell?.Flush(); }
-            catch (Exception) { /* la sesion se esta cerrando */ }
-        };
+        _terminal.Input += Send;
         _terminal.TitleChanged += title => TitleChanged?.Invoke(title);
     }
+
+    /// <summary>El terminal de la pestaña.</summary>
+    internal TerminalControl Terminal => _terminal;
+
+    /// <summary>La lectura del shell en marcha (las pruebas esperan a que acabe).</summary>
+    internal Task? ReadLoop { get; private set; }
 
     public FrameworkElement View { get; }
 
@@ -46,58 +53,35 @@ public sealed class SshSession : ISession
     public event Action<string>? TitleChanged;
     public event Action<string?>? Ended;
 
+    private void Send(byte[] bytes)
+    {
+        try { _shell?.Write(bytes); _shell?.Flush(); }
+        catch (Exception) { /* la sesion se esta cerrando */ }
+    }
+
     public async Task ConnectAsync(string password)
     {
-        var host = _connection.Host;
-        var port = _connection.Port;
-        var user = _connection.UserName;
-
-        var methods = new List<AuthenticationMethod>();
-        if (_connection.PrivateKeyPath.Length > 0 && File.Exists(_connection.PrivateKeyPath))
-        {
-            var key = password.Length > 0 ? new PrivateKeyFile(_connection.PrivateKeyPath, password) : new PrivateKeyFile(_connection.PrivateKeyPath);
-            methods.Add(new PrivateKeyAuthenticationMethod(user, key));
-        }
-        if (password.Length > 0)
-        {
-            methods.Add(new PasswordAuthenticationMethod(user, password));
-            // Servidores que piden la contraseña por teclado (keyboard-interactive) en vez de por
-            // el metodo «password»: se contesta con la misma.
-            var kbd = new KeyboardInteractiveAuthenticationMethod(user);
-            kbd.AuthenticationPrompt += (_, e) =>
-            {
-                foreach (var prompt in e.Prompts)
-                    prompt.Response = password;
-            };
-            methods.Add(kbd);
-        }
-        if (methods.Count == 0)
-            throw new InvalidOperationException(Localization.Loc.Get("SshNoCredentials"));
-
-        var info = new ConnectionInfo(host, port, user, methods.ToArray()) { Timeout = TimeSpan.FromSeconds(20) };
-        var client = new SshClient(info);
-
-        await Task.Run(() => client.Connect());
-        _client = client;
-
         // El tamaño del terminal en este momento; si la pestaña cambia despues se avisa al servidor.
-        var shell = client.CreateShellStream("xterm-256color", (uint)_terminal.Cols, (uint)_terminal.Rows, 0, 0, 64 * 1024);
+        var client = await _open(_connection, password, _terminal.Cols, _terminal.Rows);
+        _client = client;
+        var shell = client.Stream;
         _shell = shell;
-        _terminal.Resized += (cols, rows) => ResizeShell(shell, cols, rows);
+        _terminal.Resized += (cols, rows) => SshShell.Resize(shell, cols, rows);
 
         _reader = new CancellationTokenSource();
-        _ = Task.Run(() => ReadLoopAsync(shell, _reader.Token));
+        var token = _reader.Token;
+        ReadLoop = Task.Run(() => ReadLoopAsync(shell, token));
         _terminal.Focus();
     }
 
-    private async Task ReadLoopAsync(ShellStream shell, CancellationToken token)
+    private async Task ReadLoopAsync(Stream shell, CancellationToken token)
     {
         var buffer = new byte[16 * 1024];
         try
         {
             while (!token.IsCancellationRequested)
             {
-                var n = await shell.ReadAsync(buffer, 0, buffer.Length, token);
+                var n = await shell.ReadAsync(buffer, token);
                 if (n <= 0)
                     break;
                 var chunk = new byte[n];
@@ -116,27 +100,6 @@ public sealed class SshSession : ISession
         }
 
         await _terminal.Dispatcher.InvokeAsync(() => Ended?.Invoke(null));
-    }
-
-    /// <summary>
-    /// Avisa al servidor de que el terminal ha cambiado de tamaño (para que vim, htop o less se
-    /// adapten). SSH.NET no lo expone en <see cref="ShellStream"/>, pero el canal de debajo si
-    /// sabe mandar la peticion <c>window-change</c>: se le llama por reflexion, y si algun dia
-    /// cambia por dentro, simplemente no se redimensiona.
-    /// </summary>
-    private static void ResizeShell(ShellStream shell, int cols, int rows)
-    {
-        try
-        {
-            var channelField = typeof(ShellStream).GetField("_channel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var channel = channelField?.GetValue(shell);
-            var method = channel?.GetType().GetMethod("SendWindowChangeRequest");
-            method?.Invoke(channel, [(uint)cols, (uint)rows, 0u, 0u]);
-        }
-        catch (Exception)
-        {
-            // Sin redimensionado remoto: el shell sigue con el tamaño con el que se abrio.
-        }
     }
 
     public void Focus() => _terminal.Focus();
@@ -170,7 +133,7 @@ public sealed class SshSession : ISession
     {
         _reader?.Cancel();
         try { _shell?.Dispose(); } catch (Exception) { }
-        try { _client?.Disconnect(); _client?.Dispose(); } catch (Exception) { }
+        try { _client?.Close(); } catch (Exception) { }
         _shell = null;
         _client = null;
     }

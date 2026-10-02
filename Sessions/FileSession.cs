@@ -12,10 +12,17 @@ public sealed class FileSession : ISession
     private readonly Connection _connection;
     private readonly FileBrowserControl _browser = new();
     private readonly ContentControl _host = new();
+    private readonly Func<Connection, string, CancellationToken, Task<IRemoteFileSystem>> _connect;
 
-    public FileSession(Connection connection)
+    public FileSession(Connection connection) : this(connection, OpenAsync)
+    {
+    }
+
+    /// <param name="connect">Abre el sistema de ficheros remoto (las pruebas ponen uno en memoria).</param>
+    internal FileSession(Connection connection, Func<Connection, string, CancellationToken, Task<IRemoteFileSystem>> connect)
     {
         _connection = connection;
+        _connect = connect;
         // Hasta que la conexion entra no hay explorador que enseñar: un indicador con el nombre
         // del servidor en su sitio. Si falla, la pestaña se cierra y sale el aviso con la razon.
         _host.Content = ConnectingPanel();
@@ -45,9 +52,8 @@ public sealed class FileSession : ISession
 
     public async Task ConnectAsync(string password)
     {
-        Func<CancellationToken, Task<IRemoteFileSystem>> open = _connection.Kind == ConnectionKind.Ftp
-            ? async ct => await FtpFileSystem.ConnectAsync(_connection, password, ct)
-            : async ct => await SftpFileSystem.ConnectAsync(_connection, password, ct);
+        // La misma funcion abre las conexiones extra de las transferencias en paralelo.
+        Func<CancellationToken, Task<IRemoteFileSystem>> open = ct => _connect(_connection, password, ct);
         var fs = await open(CancellationToken.None);
 
         var remote = new RemoteSide(fs);
@@ -61,6 +67,15 @@ public sealed class FileSession : ISession
         await _browser.RemotePaneNavigateAsync(_connection.RemotePath.Length > 0 ? _connection.RemotePath : "/");
         TitleChanged?.Invoke(_connection.Kind == ConnectionKind.Ftp ? (_connection.FtpsMode > 0 ? "FTPS" : "FTP") : (_connection.UseScp ? "SCP" : "SFTP"));
     }
+
+    /// <summary>SFTP/SCP o FTP/FTPS, segun la conexion.</summary>
+    internal static async Task<IRemoteFileSystem> OpenAsync(Connection connection, string password, CancellationToken cancellationToken) =>
+        connection.Kind == ConnectionKind.Ftp
+            ? await FtpFileSystem.ConnectAsync(connection, password, cancellationToken)
+            : await SftpFileSystem.ConnectAsync(connection, password, cancellationToken);
+
+    /// <summary>El explorador de dos paneles.</summary>
+    internal FileBrowserControl Browser => _browser;
 
     public void Focus() => _browser.FocusRemote();
 
