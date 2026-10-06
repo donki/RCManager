@@ -14,8 +14,10 @@ namespace SocRcManager;
 public partial class ConnectionWindow : Window
 {
     private readonly Connection _connection;
+    private readonly List<Connection> _others;
 
-    public ConnectionWindow(Connection connection, IReadOnlyList<string> folders)
+    /// <param name="others">Las conexiones guardadas, para «Copiar la configuracion de otra conexion» (la propia se descarta).</param>
+    public ConnectionWindow(Connection connection, IReadOnlyList<string> folders, IReadOnlyList<Connection>? others = null)
     {
         InitializeComponent();
         _connection = connection;
@@ -25,17 +27,11 @@ public partial class ConnectionWindow : Window
         SaveButton.ToolTip = Loc.Get("Save");
         BrowseButton.ToolTip = Loc.Get("BrowseTooltip");
 
-        // --- General ---
+        // --- Lo que es de esta conexion: nombre, carpeta, servidor y notas ---
         NameBox.Text = connection.Name;
-        KindBox.SelectedIndex = ConnectionForm.KindIndex(connection.Kind);
         FolderBox.ItemsSource = folders;
         FolderBox.Text = connection.Folder;
         HostBox.Text = connection.Host;
-        PortBox.Text = connection.Port.ToString();
-        UserBox.Text = connection.UserName;
-        DomainBox.Text = connection.Domain;
-        PasswordBox.Password = Secrets.Unprotect(connection.PasswordProtected);
-        KeyBox.Text = connection.PrivateKeyPath;
         NotesBox.Text = connection.Notes;
 
         // --- Pantalla completa: en que monitor ---
@@ -43,7 +39,35 @@ public partial class ConnectionWindow : Window
         var screens = System.Windows.Forms.Screen.AllScreens;
         for (var i = 0; i < screens.Length; i++)
             ScreenBox.Items.Add(new ComboBoxItem { Content = Loc.Format("ScreenN", i + 1, screens[i].Bounds.Width, screens[i].Bounds.Height, screens[i].Primary ? " · " + Loc.Get("ScreenPrimary") : string.Empty) });
-        ScreenBox.SelectedIndex = Math.Clamp(connection.FullScreenScreen, 0, screens.Length);
+
+        LoadSettings(connection);
+        _others = (others ?? []).Where(o => o.Id != connection.Id).ToList();
+        CopyFromButton.Visibility = _others.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        CopyFromButton.ToolTip = Loc.Get("CopyFromTooltip");
+
+        ShowKindFields();
+        OnSizeChanged(this, null!);
+        OnGatewayChanged(this, null!);
+        Loaded += (_, _) => { NameBox.Focus(); NameBox.SelectAll(); };
+    }
+
+    /// <summary>
+    /// Pone en el formulario la configuracion de <paramref name="connection"/>: todo menos lo que
+    /// es propio de cada conexion (nombre, carpeta, servidor y notas). Lo usan la apertura y
+    /// «Copiar la configuracion de otra conexion»; nada se escribe en la conexion hasta guardar.
+    /// </summary>
+    private void LoadSettings(Connection connection)
+    {
+        // --- General ---
+        KindBox.SelectedIndex = ConnectionForm.KindIndex(connection.Kind);
+        PortBox.Text = connection.Port.ToString();
+        UserBox.Text = connection.UserName;
+        DomainBox.Text = connection.Domain;
+        PasswordBox.Password = Secrets.Unprotect(connection.PasswordProtected);
+        KeyBox.Text = connection.PrivateKeyPath;
+
+        // --- Pantalla completa ---
+        ScreenBox.SelectedIndex = Math.Clamp(connection.FullScreenScreen, 0, ScreenBox.Items.Count - 1);
 
         // --- Transferencias ---
         ParallelBox.SelectedIndex = Math.Clamp(connection.TransferParallel, 1, 8) - 1;
@@ -100,11 +124,24 @@ public partial class ConnectionWindow : Window
         GatewayUserBox.Text = connection.RdpGatewayUserName;
         GatewayDomainBox.Text = connection.RdpGatewayDomain;
         GatewayPasswordBox.Password = Secrets.Unprotect(connection.RdpGatewayPasswordProtected);
+    }
 
+    /// <summary>
+    /// Copia en el formulario la configuracion de otra conexion elegida de la lista (tipo, puerto,
+    /// usuario, contraseña y todas las opciones de las pestañas). El nombre, la carpeta, el
+    /// servidor y las notas se quedan como estaban. Se puede cancelar despues sin tocar nada.
+    /// </summary>
+    private void OnCopyFromClick(object sender, RoutedEventArgs e)
+    {
+        if (ConnectionPickerWindow.Pick(this, _others) is not { } source)
+            return;
+
+        LoadSettings(source);
         ShowKindFields();
         OnSizeChanged(this, null!);
         OnGatewayChanged(this, null!);
-        Loaded += (_, _) => { NameBox.Focus(); NameBox.SelectAll(); };
+        StatusText.Text = string.Empty;
+        CopiedText.Text = Loc.Format("CopiedFrom", source.Name);
     }
 
     /// <summary>Pestaña con la que se abre (0 = General).</summary>

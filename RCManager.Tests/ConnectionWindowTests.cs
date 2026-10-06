@@ -1,5 +1,6 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using SocRcManager.Localization;
 using SocRcManager.Models;
 using SocRcManager.Services;
@@ -533,5 +534,170 @@ public sealed class ConnectionWindowTests : UiTest
             Assert.Equal("Cancel", w.CancelButton.ToolTip);
             Assert.Equal(Loc.Get("ScreenCurrent"), ((System.Windows.Controls.ComboBoxItem)w.ScreenBox.Items[0]).Content);
         });
+    }
+    // ------------------------------------------------------------------ copiar de otra conexion
+
+    private static Connection Ssh() => new()
+    {
+        Name = "Nuevo",
+        Kind = ConnectionKind.Ssh,
+        Folder = "Casa",
+        Host = "nuevo.lan",
+        Port = 22,
+        UserName = "yo",
+        Notes = "mis notas",
+    };
+
+    [Fact]
+    public void Copiar_de_otra_conexion_trae_todo_menos_nombre_carpeta_servidor_y_notas()
+    {
+        var target = Ssh();
+        var id = target.Id;
+        var others = new List<Connection> { Rdp(), new() { Name = "Otra", Host = "otra.lan", Folder = "Casa" }, target };
+        var copied = string.Empty;
+        var listed = -1;
+
+        Ui.Answer<ConnectionWindow>(w =>
+        {
+            Assert.Equal(Visibility.Visible, w.CopyFromButton.Visibility);
+            Assert.Equal(Loc.Get("CopyFromTooltip"), w.CopyFromButton.ToolTip);
+            Ui.Click(w.CopyFromButton);
+            copied = w.CopiedText.Text;
+
+            // Lo propio de esta conexion sigue; lo demas es de la copiada, ya en pantalla.
+            Assert.Equal(("Nuevo", "Casa", "nuevo.lan", "mis notas"), (w.NameBox.Text, w.FolderBox.Text, w.HostBox.Text, w.NotesBox.Text));
+            Assert.Equal(0, w.KindBox.SelectedIndex);
+            Assert.Equal(("3390", "ana", "ACME", "secreta"), (w.PortBox.Text, w.UserBox.Text, w.DomainBox.Text, w.PasswordBox.Password));
+            Assert.Equal(Visibility.Visible, w.DisplayTab.Visibility);
+            Assert.Equal(Visibility.Collapsed, w.SshPanel.Visibility);
+            Assert.Equal(Visibility.Visible, w.CustomSizePanel.Visibility);
+            Assert.Equal(Visibility.Visible, w.GatewayCredsPanel.Visibility);
+            Ui.Click(w.SaveButton);
+        });
+        Ui.Answer<ConnectionPickerWindow>(p =>
+        {
+            // La propia no sale; se ordenan por carpeta y nombre.
+            listed = p.List.Items.Count;
+            p.Search.Text = "acme";
+            Assert.Single(p.List.Items);
+            Assert.Equal(0, p.List.SelectedIndex);
+            Ui.Click(Ui.ButtonById(p, "OkButton")!);
+        });
+
+        var result = Ui.Run(() => Dialogs.ShowModal(new ConnectionWindow(target, Folders, others)));
+        Assert.Equal(0, Ui.PendingAnswers);
+        Assert.True(result);
+        Assert.Equal(2, listed);
+        Assert.Equal(Loc.Format("CopiedFrom", "Servidor"), copied);
+
+        Assert.Equal(id, target.Id);
+        Assert.Equal(("Nuevo", "Casa", "nuevo.lan", "mis notas"), (target.Name, target.Folder, target.Host, target.Notes));
+        Assert.Equal(ConnectionKind.Rdp, target.Kind);
+        Assert.Equal((3390, "ana", "ACME"), (target.Port, target.UserName, target.Domain));
+        Assert.Equal("secreta", Secrets.Unprotect(target.PasswordProtected));
+        Assert.Equal((false, 1700, 950, 16), (target.RdpSmartSizing, target.RdpWidth, target.RdpHeight, target.RdpColorDepth));
+        Assert.Equal((2, 1, true), (target.RdpAuthLevel, target.RdpGatewayMode, target.RdpAdminSession));
+        Assert.Equal(("gw.acme.lan", "gwuser", "gwpass"), (target.RdpGatewayHost, target.RdpGatewayUserName, Secrets.Unprotect(target.RdpGatewayPasswordProtected)));
+        Assert.False(target.RdpAutoReconnect);
+    }
+
+    [Fact]
+    public void Copiar_y_cancelar_no_toca_la_conexion()
+    {
+        var target = Ssh();
+        var before = Snapshot(target);
+
+        Ui.Answer<ConnectionWindow>(w =>
+        {
+            Ui.Click(w.CopyFromButton);
+            Assert.Equal(string.Empty, w.CopiedText.Text);   // cancelado en la lista: nada cambia
+            Assert.Equal(1, w.KindBox.SelectedIndex);
+            Ui.Click(w.CopyFromButton);
+            Assert.Equal(0, w.KindBox.SelectedIndex);         // copiado, pero luego se cancela el editor
+            Ui.Click(w.CancelButton);
+        });
+        Ui.Answer<ConnectionPickerWindow>(p => Ui.Click(Ui.ButtonById(p, "CancelButton")!));
+        Ui.Answer<ConnectionPickerWindow>(p =>
+        {
+            Assert.False(Ui.ButtonById(p, "OkButton")!.IsEnabled);   // dos en la lista, ninguna elegida
+            p.List.SelectedIndex = 1;
+            Assert.True(Ui.ButtonById(p, "OkButton")!.IsEnabled);
+            Ui.Click(Ui.ButtonById(p, "OkButton")!);
+        });
+
+        var result = Ui.Run(() => Dialogs.ShowModal(new ConnectionWindow(target, Folders, [new() { Name = "A", Folder = "Z" }, Rdp(), target])));
+        Assert.Equal(0, Ui.PendingAnswers);
+        Assert.False(result);
+        Assert.Equal(before, Snapshot(target));
+    }
+
+    [Fact]
+    public void En_la_lista_flecha_abajo_baja_del_buscador_y_doble_clic_elige()
+    {
+        var target = Ssh();
+        var keys = (Down: false, Other: false);
+        Ui.Answer<ConnectionWindow>(w =>
+        {
+            Ui.Click(w.CopyFromButton);
+            Ui.Click(w.SaveButton);
+        });
+        Ui.Answer<ConnectionPickerWindow>(p =>
+        {
+            System.Windows.Input.KeyEventArgs Key(System.Windows.Input.Key k) =>
+                new(System.Windows.Input.Keyboard.PrimaryDevice, PresentationSource.FromVisual(p.Search)!, 0, k)
+                { RoutedEvent = UIElement.PreviewKeyDownEvent };
+
+            // Otra tecla no hace nada; flecha abajo elige la primera y lleva el foco a la lista.
+            var other = Key(System.Windows.Input.Key.A);
+            p.Search.RaiseEvent(other);
+            keys.Other = other.Handled;
+            var down = Key(System.Windows.Input.Key.Down);
+            p.Search.RaiseEvent(down);
+            keys.Down = down.Handled;
+            Assert.Equal(0, p.List.SelectedIndex);
+
+            // Doble clic fuera de una fila no elige; sobre la fila, si.
+            var mouse = System.Windows.Input.Mouse.PrimaryDevice;
+            p.List.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(mouse, 0, System.Windows.Input.MouseButton.Left)
+                { RoutedEvent = Control.MouseDoubleClickEvent, Source = p.List });
+            Assert.True(p.IsVisible);
+            var row = (System.Windows.Controls.ListBoxItem)p.List.Items[1];
+            p.List.SelectedItem = row;
+            // MouseDoubleClick es directo: lo recibe la lista, con el elemento pulsado de origen.
+            p.List.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(mouse, 0, System.Windows.Input.MouseButton.Left)
+                { RoutedEvent = Control.MouseDoubleClickEvent, Source = row.Content });
+        });
+
+        var result = Ui.Run(() => Dialogs.ShowModal(new ConnectionWindow(target, Folders, [Rdp(), new() { Name = "Otra", Host = "otra.lan" }])));
+        Assert.Equal(0, Ui.PendingAnswers);
+        Assert.True(result);
+        Assert.False(keys.Other);
+        Assert.True(keys.Down);
+        Assert.Equal(ConnectionKind.Rdp, target.Kind);   // la fila 1 (por carpeta: «» antes que «Clientes/Acme») es Servidor
+    }
+
+    [Fact]
+    public void Sin_otras_conexiones_no_hay_boton_de_copiar()
+    {
+        var c = Ssh();
+        Ui.Run(() =>
+        {
+            Assert.Equal(Visibility.Collapsed, Ui.Show(new ConnectionWindow(c, Folders)).CopyFromButton.Visibility);
+            Assert.Equal(Visibility.Collapsed, Ui.Show(new ConnectionWindow(c, Folders, [c])).CopyFromButton.Visibility);
+        });
+    }
+
+    [Fact]
+    public void La_lista_de_copiar_busca_y_ordena_por_carpeta_y_nombre()
+    {
+        Connection[] all =
+        [
+            new() { Name = "b", Folder = "Clientes", Host = "h1" },
+            new() { Name = "a", Folder = "Clientes", Host = "h2", Notes = "acme" },
+            new() { Name = "z", Folder = "", Host = "h3" },
+        ];
+        Assert.Equal(["z", "a", "b"], ConnectionPickerWindow.Filter(all, null).Select(c => c.Name));
+        Assert.Equal(["a"], ConnectionPickerWindow.Filter(all, "  ACME ").Select(c => c.Name));
+        Assert.Empty(ConnectionPickerWindow.Filter(all, "nada"));
     }
 }

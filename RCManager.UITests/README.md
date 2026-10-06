@@ -2,7 +2,7 @@
 
 Recorridos de la ventana de sOC Remote Connections Manager con [FlaUI](https://github.com/FlaUI/FlaUI)
 (MIT) sobre UI Automation y xUnit. Lanzan el **exe Debug ya compilado** en modo aislado y lo manejan
-como lo haría una persona: abrir Ajustes, crear, editar y borrar una conexión, importar un `.rdp`,
+como lo haría una persona: abrir Ajustes, crear, editar y borrar una conexión, copiar la configuración de otra, importar un `.rdp`,
 cambiar de idioma y abrir «Acerca de»; sacar una pestaña a su propia ventana y devolverla (comprobando
 que el control de Escritorio remoto es el mismo, con la misma ventana nativa: la sesión no se habría
 cortado), varias ventanas sueltas y cerrar la principal (pregunta; cancelar y aceptar), y la instancia
@@ -21,7 +21,7 @@ dotnet test RCManager.UITests\RCManager.UITests.csproj --no-build
 
 Otro exe: variable `RCMANAGER_EXE` con su ruta (tiene que ser Debug: en Release no hay modo aislado).
 
-Son 10 pruebas y tardan unos 20 s en total; corren una detrás de otra (`xunit.runner.json`), cada
+Son 11 pruebas y tardan unos 20 s en total; corren una detrás de otra (`xunit.runner.json`), cada
 una con su propia instancia de la aplicación y su carpeta de datos vacía.
 
 ## Modo aislado (`SOC_SANDBOX`)

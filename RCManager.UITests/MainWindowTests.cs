@@ -1,4 +1,4 @@
-using FlaUI.Core.AutomationElements;
+﻿using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Tools;
 
 namespace SocRcManager.UITests;
@@ -91,6 +91,43 @@ public sealed class MainWindowTests
         Assert.True(app.WaitTreeContains("Prueba UI editada", present: false), "La conexion borrada sigue en el arbol");
         Assert.DoesNotContain(FakeHost, app.ConnectionsJson());
         app.Capture(app.Main, "borrada");
+    }
+
+    [Fact]
+    public void Conexion_CopiarLaConfiguracionDeOtra()
+    {
+        using var app = RcApp.LaunchWith(RcApp.Connections(("Plantilla SSH", "Ssh", 2222), ("Destino", "Rdp", 3389)), []);
+
+        // El editor de «Destino» (con Editar: el doble clic conectaria) y su boton de copiar.
+        app.SelectTreeItem("Destino");
+        RcApp.Press(app.Button(app.Main, "EditButton"));
+        var editor = app.WaitModal();
+        RcApp.Press(app.Button(editor, "CopyFromButton"));
+
+        // La lista de conexiones, con buscador; con una sola coincidencia queda elegida.
+        var picker = Retry.WhileNull(() => editor.ModalWindows.FirstOrDefault(), RcApp.Timeout, throwOnTimeout: true,
+            timeoutMessage: "No se abre la lista para copiar").Result!;
+        picker.WaitUntilClickable(RcApp.Timeout);
+        // Por el patron Value (sin teclado: la ventana de pruebas no tiene el foco).
+        app.ById(picker, "CopyFromSearch").Patterns.Value.Pattern.SetValue("Plantilla");
+        app.Capture(picker, "elegir");
+        RcApp.Press(app.Button(picker, "OkButton"));
+        Retry.WhileTrue(() => editor.ModalWindows.Length > 0, RcApp.Timeout, throwOnTimeout: true, timeoutMessage: "La lista no se cierra");
+
+        // Trae el tipo y el puerto de la otra; el nombre sigue siendo el suyo.
+        Assert.Equal("Destino", app.ById(editor, "NameBox").Patterns.Value.Pattern.Value.Value);
+        Assert.Equal("2222", app.ById(editor, "PortBox").Patterns.Value.Pattern.Value.Value);
+        app.Capture(editor, "copiada");
+        RcApp.Press(app.Button(editor, "SaveButton"));
+        app.WaitNoModal();
+
+        Assert.True(app.WaitTreeContains("Destino"));
+        using var json = System.Text.Json.JsonDocument.Parse(app.ConnectionsJson());
+        var saved = json.RootElement.GetProperty("Connections").EnumerateArray()
+            .Single(c => c.GetProperty("Name").GetString() == "Destino");
+        Assert.Equal(2222, saved.GetProperty("Port").GetInt32());
+        Assert.Equal("ejemplo.invalid", saved.GetProperty("Host").GetString());
+        app.Capture(app.Main, "guardada");
     }
 
     [Fact]

@@ -104,26 +104,26 @@ Framework 4.8 porque MSBuild de .NET Core no resuelve referencias COM.
 
 ## Pruebas
 
-`RCManager.Tests` (xUnit): **961 pruebas**, todas en verde. Referencian la aplicación entera y
+`RCManager.Tests` (xUnit): **966 pruebas**, todas en verde. Referencian la aplicación entera y
 prueban la lógica (importadores .rdm/.rdp, modelo y árbol, almacén, ajustes, DPAPI y cifrado de la
 nube, Google Drive/OneDrive y OAuth con un HTTP falso, errores de conexión, textos es/en, permisos,
 FTP contra un servidor FTP falso en 127.0.0.1, SFTP/SCP contra uno en memoria, el intérprete y las
 teclas del terminal, instancia única con su tubería de verdad, colocación de ventanas sueltas) y
 también **las ventanas y controles**: la principal (árbol, búsqueda, arrastrar y soltar, sesiones,
 pantalla completa, sacar y devolver pestañas, bandeja, arranque y otra instancia), el editor de
-conexiones, Ajustes, Acerca de, los diálogos, el explorador de dos paneles, el editor de texto,
+conexiones (con «copiar de otra conexión»), Ajustes, Acerca de, los diálogos, el explorador de dos paneles, el editor de texto,
 permisos, el terminal y la ventana suelta. Se manejan en un hilo STA propio, abiertas fuera de la
 pantalla y sin activarse (`RCManager.Tests/UiThread.cs`); las modales las contesta la prueba. El
 control RDP (el de Windows, creado de verdad pero **nunca conectado**), SSH.NET, SFTP, el icono de la
 bandeja, los monitores y el ratón van detrás de interfaces con un doble. Nada toca los datos reales,
 el registro, la nube ni ningún servidor (solo 127.0.0.1).
 
-- Cobertura de lo instrumentado (`sOCRCManager.dll`, ReportGenerator): **99,3 %** de líneas.
-- Cobertura sobre toda la app: **99,4 %** (4893 de 4924 líneas ejecutables en 57 ficheros `.cs`).
+- Cobertura de lo instrumentado (`sOCRCManager.dll`, ReportGenerator): **99,4 %** de líneas.
+- Cobertura sobre toda la app: **99,4 %** (4993 de 5024 líneas ejecutables en 58 ficheros `.cs`).
   Lo que queda sin cubrir es el pegamento con Windows que no se puede ejecutar en una prueba sin
   efectos fuera: `Shell_NotifyIcon` y el menú de la bandeja, conectar SSH de verdad, `Connect()`
   del control RDP, el diálogo de abrir ficheros del sistema y poco más.
-- Tiempo del banco: **unos 67 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-10-03.
+- Tiempo del banco: **unos 69 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-10-06.
 
 **Cómo se cuenta «toda la app»** (`tools/cobertura-app.py <carpeta-de-resultados> --app . --detalle`):
 todos los `.cs` de la app, fuera de `obj/`, `bin/`, `*.g.cs`, `*.Designer.cs` y los proyectos de
@@ -135,8 +135,8 @@ sueltas, `using`, declaraciones sin cuerpo como `static extern`, atributos, inte
 comentarios. Por eso la cifra de toda la app puede salir unas décimas por encima de la de
 ReportGenerator, que sí cuenta las llaves.
 
-`RCManager.UITests` (FlaUI): **10 pruebas de interfaz** sobre el exe Debug en modo aislado, en
-**unos 17 s**: arranque, Ajustes, crear/editar/borrar una conexión, importar un `.rdp`, idioma,
+`RCManager.UITests` (FlaUI): **11 pruebas de interfaz** sobre el exe Debug en modo aislado, en
+**unos 18 s**: arranque, Ajustes, crear/editar/borrar una conexión, copiar la configuración de otra, importar un `.rdp`, idioma,
 «Acerca de», sacar una pestaña a su ventana y devolverla, varias ventanas sueltas al cerrar la
 principal, y la instancia única (segunda instancia con `--open` que trae la primera de la bandeja,
 y arranque con `--tray`). Ver `RCManager.UITests/README.md`.

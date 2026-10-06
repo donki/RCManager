@@ -1,5 +1,22 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.10.6.0 — Copiar la configuración de otra conexión
+
+- **Editor de conexiones: botón «Copiar la configuración de otra conexión»** (abajo a la izquierda,
+  icono de copiar). Abre la lista de las conexiones guardadas, con buscador (nombre, servidor,
+  usuario, carpeta o notas; flecha abajo baja a la lista, doble clic o Intro elige) y trae al
+  formulario todo lo de la elegida —tipo, puerto, usuario, dominio, contraseña, clave privada y las
+  opciones de todas las pestañas (pantalla, recursos locales, experiencia, avanzado, transferencias)—
+  menos lo propio de cada conexión: **nombre, carpeta, servidor y notas**. No se guarda nada hasta
+  pulsar Guardar; Cancelar la deja como estaba.
+- Pruebas: 966 de lógica e interfaz (5 nuevas del editor y la lista) y 11 de interfaz con FlaUI (una
+  nueva que copia de otra conexión y guarda); cobertura de toda la aplicación, 99,4 %.
+
+**English.** Connection editor: new "Copy the settings of another connection" button. It lists the
+saved connections with a search box and copies everything from the chosen one (type, port, user,
+domain, password, private key and every tab's options) except the name, folder, host and notes.
+Nothing is saved until you press Save.
+
 ## 2026.10.3.0 — Pruebas de toda la aplicación (99 %) y los arreglos que salieron con ellas
 
 - **Cerrar una pestaña FTP podía colgar la aplicación**: la desconexión esperaba a la biblioteca de

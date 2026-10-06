@@ -685,7 +685,7 @@ public partial class MainWindow : Window
 
     private bool Edit(Connection connection)
     {
-        var dialog = new ConnectionWindow(connection, _store.AllFolders()) { Owner = this };
+        var dialog = new ConnectionWindow(connection, _store.AllFolders(), _store.Connections) { Owner = this };
         return Dialogs.ShowModal(dialog) == true;
     }
 
@@ -751,7 +751,7 @@ public partial class MainWindow : Window
             return;
         SelectConnection(connection);
         var copy = connection.Clone();
-        var dialog = new ConnectionWindow(copy, _store.AllFolders()) { Owner = this, InitialTab = tab };
+        var dialog = new ConnectionWindow(copy, _store.AllFolders(), _store.Connections) { Owner = this, InitialTab = tab };
         if (Dialogs.ShowModal(dialog) == true)
         {
             _store.Connections[_store.Connections.IndexOf(connection)] = copy;
