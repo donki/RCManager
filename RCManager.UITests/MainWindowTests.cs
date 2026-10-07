@@ -122,6 +122,7 @@ public sealed class MainWindowTests
         app.WaitNoModal();
 
         Assert.True(app.WaitTreeContains("Destino"));
+        RcApp.WaitUntil(() => app.ConnectionsJson().Contains("\"Folder\": \"Acme\""));
         using var json = System.Text.Json.JsonDocument.Parse(app.ConnectionsJson());
         var saved = json.RootElement.GetProperty("Connections").EnumerateArray()
             .Single(c => c.GetProperty("Name").GetString() == "Destino");
@@ -129,6 +130,71 @@ public sealed class MainWindowTests
         Assert.Equal("ejemplo.invalid", saved.GetProperty("Host").GetString());
         app.Capture(app.Main, "guardada");
     }
+
+    [Fact]
+    public void Conexion_MenuDelBotonDerecho_CopiaYEdita()
+    {
+        using var app = RcApp.LaunchWith(RcApp.Connections(("Servidor", "Rdp", 3389)), []);
+
+        // El menu se abre por UI Automation (ShowContextMenu), sin mover el raton.
+        var menu = app.OpenTreeContextMenu("Servidor");
+        app.Capture(app.Main, "menu");
+        RcApp.Press(app.Button(menu, "CopyMenuItem"));
+        Assert.True(app.WaitTreeContains("Servidor (2)"), "Copiar no deja la copia en el arbol");
+        Assert.Contains("Servidor (2)", app.ConnectionsJson());
+
+        menu = app.OpenTreeContextMenu("Servidor");
+        RcApp.Press(app.Button(menu, "EditMenuItem"));
+        var editor = app.WaitModal();
+        Assert.Equal("Servidor", app.ById(editor, "NameBox").Patterns.Value.Pattern.Value.Value);
+        app.Capture(editor, "editar");
+        RcApp.Press(app.Button(editor, "CancelButton"));
+        app.WaitNoModal();
+    }
+
+    [Fact]
+    public void Carpeta_ExportarConFraseEImportarla()
+    {
+        using var app = RcApp.LaunchWith(Folders(("Servidor", "Clientes/Acme"), ("Web", "Clientes")), []);
+        var file = Path.Combine(app.DataFolder, "Acme-export.rcm");
+
+        // Exportar la rama «Clientes/Acme» con frase (boton derecho sobre la carpeta).
+        var menu = app.OpenTreeContextMenu("Acme", "ExportFolderMenuItem");
+        RcApp.Press(app.Button(menu, "ExportFolderMenuItem"));
+        app.AnswerPassphrase("frase de prueba");
+        app.AnswerFileDialog(app.Main, file);
+        Assert.True(RcApp.WaitUntil(() => File.Exists(file)), "No se escribe el fichero exportado");
+        var text = File.ReadAllText(file);
+        Assert.Contains("\"Encrypted\": true", text);
+        Assert.DoesNotContain("ejemplo.invalid", text);
+        app.Capture(app.Main, "exportada");
+
+        // Importarla desde Ajustes: pide la frase y aparece «Acme» en la raiz con «Servidor» dentro.
+        RcApp.Press(app.Button(app.Main, "SettingsButton"));
+        var settings = app.WaitModal();
+        RcApp.Press(app.Button(settings, "ImportButton"));
+        app.AnswerFileDialog(settings, file);
+        app.AnswerPassphrase("frase de prueba");
+        settings = app.WaitModal();
+        RcApp.Press(app.Button(settings, "CloseButton"));
+        app.WaitNoModal();
+        RcApp.WaitUntil(() => app.ConnectionsJson().Contains("\"Folder\": \"Acme\""));
+        var status = app.Main.FindFirstDescendant(app.Cf.ByAutomationId("StatusText"))?.Name;
+
+        using var json = System.Text.Json.JsonDocument.Parse(app.ConnectionsJson());
+        var folders = json.RootElement.GetProperty("Connections").EnumerateArray()
+            .Where(c => c.GetProperty("Name").GetString() == "Servidor").Select(c => c.GetProperty("Folder").GetString()).Order().ToList();
+        Assert.True(folders.SequenceEqual(["Acme", "Clientes/Acme"]), status);
+        app.Capture(app.Main, "importada");
+    }
+
+    /// <summary>JSON de conexiones de prueba en carpetas (servidores .invalid).</summary>
+    private static string Folders(params (string Name, string Folder)[] items) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Connections = items.Select(i => new { Id = Guid.NewGuid(), i.Name, Kind = "Rdp", i.Folder, Host = "ejemplo.invalid", Port = 3389, UserName = "nadie" }).ToArray(),
+            EmptyFolders = Array.Empty<string>(),
+        });
 
     [Fact]
     public void Importar_Rdp_DesdeAjustes()

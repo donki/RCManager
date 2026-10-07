@@ -1,5 +1,28 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## 2026.10.7.0 — Menú del botón derecho y exportar conexiones a otro RC Manager
+
+- **Botón derecho sobre una conexión**: **Copiar** (una copia nueva, como Duplicar) y **Editar**.
+  Abrir el menú selecciona esa fila.
+- **Exportar conexiones** a un fichero `.rcm` para incorporarlas en el RC Manager de otro equipo:
+  **todas** (Ajustes › Exportar conexiones) o **una carpeta** con sus subcarpetas (botón derecho
+  sobre ella › Exportar esta carpeta; llega con su nombre a la raíz del árbol del otro equipo).
+  Con **frase**, el fichero va cifrado (AES-256-GCM, la misma protección que la nube) y lleva las
+  contraseñas; **sin frase**, no lleva ninguna contraseña y el resto queda legible.
+- **Importar** un `.rcm` desde Ajustes › Importar conexiones (junto a `.rdm` y `.rdp`): pide la
+  frase si va cifrado, avisa si no es la buena, vuelve a proteger las contraseñas para tu usuario
+  de Windows y no duplica las conexiones que ya estén.
+- Pruebas: 979 de lógica e interfaz (13 nuevas: el formato `.rcm`, exportar una carpeta e
+  importarla, el menú y Ajustes) y 13 de interfaz con FlaUI (2 nuevas: el menú del botón derecho, y
+  exportar una carpeta con frase y volver a importarla con los diálogos de Windows). La del menú
+  pulsa Mayús+F10 (WPF no abre el menú contextual por UI Automation), solo si la aplicación tiene el
+  primer plano. Cobertura de toda la aplicación, 99,4 %.
+
+**English.** Right-click a connection for Copy and Edit. Export connections to a `.rcm` file to
+bring them into RC Manager on another computer: all of them (Settings) or one folder with its
+subfolders (right-click it). With a passphrase the file is encrypted and includes the passwords;
+without one, it has no passwords. Import `.rcm` files from Settings › Import connections.
+
 ## 2026.10.6.0 — Copiar la configuración de otra conexión
 
 - **Editor de conexiones: botón «Copiar la configuración de otra conexión»** (abajo a la izquierda,

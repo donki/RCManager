@@ -214,11 +214,72 @@ public sealed class RcApp : IDisposable
     public void SelectTreeItem(string text)
     {
         var tree = ById(Main, "Tree");
+        // La ultima que encaja: una carpeta tambien «contiene» los textos de sus hijas, y va antes.
         var item = Retry.WhileNull(() => tree.FindAllDescendants(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.TreeItem))
-            .FirstOrDefault(i => i.FindAllDescendants(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)).Any(t => t.Name == text)),
+            .LastOrDefault(i => i.FindAllDescendants(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)).Any(t => t.Name == text)),
             Timeout, throwOnTimeout: true, timeoutMessage: $"No esta «{text}» en el arbol").Result!;
         item.Patterns.SelectionItem.Pattern.Select();
         Retry.WhileFalse(() => item.Patterns.SelectionItem.Pattern.IsSelected.Value, Timeout, throwOnTimeout: true);
+    }
+
+    /// <summary>
+    /// Abre el menu del boton derecho de una fila del arbol y lo devuelve (es una ventana emergente
+    /// aparte, del mismo proceso). WPF no implementa <c>ShowContextMenu</c> de UI Automation, asi que
+    /// se pide con Mayus+F10 sobre la fila: la unica prueba que teclea. Antes se trae la ventana al
+    /// frente y se comprueba que el primer plano es de la aplicacion (constitucion general 8.4): si no,
+    /// la prueba falla sin teclear nada.
+    /// </summary>
+    public AutomationElement OpenTreeContextMenu(string text, string firstItem = "CopyMenuItem")
+    {
+        SelectTreeItem(text);
+        var tree = ById(Main, "Tree");
+        var item = tree.FindAllDescendants(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.TreeItem))
+            .Last(i => i.FindAllDescendants(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)).Any(t => t.Name == text));
+        Main.SetForeground();
+        item.Focus();
+        if (!Retry.WhileFalse(() => { GetWindowThreadProcessId(GetForegroundWindow(), out var pid); return pid == App.ProcessId; }, Timeout).Result)
+            throw new Xunit.Sdk.XunitException("La aplicacion no tiene el primer plano: no se teclea Mayus+F10");
+        FlaUI.Core.Input.Keyboard.TypeSimultaneously(FlaUI.Core.WindowsAPI.VirtualKeyShort.SHIFT, FlaUI.Core.WindowsAPI.VirtualKeyShort.F10);
+        return Retry.WhileNull(() => Automation.GetDesktop()
+                .FindAllChildren(Cf.ByProcessId(App.ProcessId))
+                .Select(w => w.ControlType == FlaUI.Core.Definitions.ControlType.Menu ? w : w.FindFirstDescendant(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.Menu)))
+                .FirstOrDefault(m => m is not null && m.FindFirstDescendant(Cf.ByAutomationId(firstItem)) is not null),
+            Timeout, throwOnTimeout: true, ignoreException: true, timeoutMessage: $"No se abre el menu de «{text}»").Result!;
+    }
+
+    /// <summary>
+    /// El dialogo comun de Windows (abrir o guardar) que cuelga de <paramref name="owner"/>: escribe la
+    /// ruta en «Nombre» y pulsa el boton por defecto (Abrir / Guardar, id 1), todo por UI Automation.
+    /// </summary>
+    public void AnswerFileDialog(Window owner, string path)
+    {
+        var found = Retry.WhileNull(() =>
+            {
+                var d = owner.ModalWindows.Concat(Main.ModalWindows)
+                    .FirstOrDefault(w => w.Properties.ClassName.ValueOrDefault == "#32770");
+                var edit = d?.FindFirstDescendant(Cf.ByAutomationId("1001").And(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit)))
+                           ?? d?.FindFirstDescendant(Cf.ByAutomationId("1148").And(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit)));
+                return edit is null ? null : Tuple.Create(d!, edit);
+            },
+            TimeSpan.FromSeconds(30), throwOnTimeout: true, ignoreException: true,
+            timeoutMessage: "No se abre el dialogo de ficheros o no tiene la casilla del nombre").Result!;
+        found.Item2.Patterns.Value.Pattern.SetValue(path);
+        found.Item1.FindFirstChild(Cf.ByAutomationId("1"))!.AsButton().Invoke();
+        Retry.WhileTrue(() => owner.ModalWindows.Concat(Main.ModalWindows).Any(w => w.Properties.ClassName.ValueOrDefault == "#32770"),
+            Timeout, throwOnTimeout: true, timeoutMessage: "El dialogo de ficheros no se cierra");
+    }
+
+    /// <summary>Contesta el dialogo de contraseña/frase de la aplicacion (la casilla de puntos, por el patron Value).</summary>
+    public void AnswerPassphrase(string passphrase)
+    {
+        // El dialogo puede colgar de la principal o de otra modal (Ajustes): el que tiene «OkButton».
+        var prompt = Retry.WhileNull(() => Main.ModalWindows.SelectMany(w => w.ModalWindows.Prepend(w))
+                .FirstOrDefault(w => w.FindFirstDescendant(Cf.ByAutomationId("OkButton")) is not null),
+            Timeout, throwOnTimeout: true, ignoreException: true, timeoutMessage: "No se abre el dialogo de la frase").Result!;
+        var box = Retry.WhileNull(() => prompt.FindFirstDescendant(Cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit)), Timeout,
+            throwOnTimeout: true, timeoutMessage: "El dialogo no tiene casilla de frase").Result!;
+        box.Patterns.Value.Pattern.SetValue(passphrase);
+        Press(Button(prompt, "OkButton"));
     }
 
     public string ConnectionsJson()

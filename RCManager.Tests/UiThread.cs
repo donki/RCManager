@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Threading;
 using SocRcManager.Services;
 
@@ -80,6 +80,8 @@ public static class Ui
             Shown.Add(w);
         };
         Dialogs.PickFiles = (_, _, _) => PickedFiles;
+        Dialogs.PickSaveFile = (_, _, name) => { SaveAsAsked = name; return SaveAs; };
+        Dialogs.WriteFile = (path, text) => Written[path] = text;
         Dialogs.Start = psi => Started.Add(psi);
         Dialogs.SystemMessage = (_, text, title) => Messages.Add((title, text));
     }
@@ -98,6 +100,13 @@ public static class Ui
 
     /// <summary>Lo que «elige» el usuario en el dialogo de abrir ficheros (null = cancela).</summary>
     public static string[]? PickedFiles { get; set; }
+
+    /// <summary>Lo que contesta el dialogo de guardar (null: cancelar) y el nombre que propuso la aplicacion.</summary>
+    public static string? SaveAs { get; set; }
+    public static string? SaveAsAsked { get; set; }
+
+    /// <summary>Ficheros escritos por la aplicacion (ruta → contenido), sin tocar el disco.</summary>
+    public static Dictionary<string, string> Written { get; } = [];
 
     /// <summary>Ventanas modales que se han abierto, en orden (para comprobar lo que se pregunto).</summary>
     public static List<Window> Modals { get; } = [];
@@ -275,6 +284,9 @@ public static class Ui
         Messages.Clear();
         Modals.Clear();
         PickedFiles = null;
+        SaveAs = null;
+        SaveAsAsked = null;
+        Written.Clear();
         LastError = null;
     }
 }

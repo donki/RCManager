@@ -26,6 +26,7 @@ public partial class SettingsWindow : Window
         SyncButton.ToolTip = Loc.Get("SyncNowTooltip");
         CloseButton.ToolTip = Loc.Get("Close");
         ImportButton.ToolTip = Loc.Get("ImportTooltip");
+        ExportButton.ToolTip = Loc.Get("ExportTooltip");
         TrayBox.IsChecked = settings.TrayOnMinimize;
         AskDetachedBox.IsChecked = settings.AskBeforeClosingDetached;
         GoogleButton.IsEnabled = CloudSync.IsAvailable(StorageMode.GoogleDrive);
@@ -174,6 +175,12 @@ public partial class SettingsWindow : Window
             main.ImportRdm();
             LocalReplaced = true;
         }
+    }
+
+    private void OnExportClick(object sender, RoutedEventArgs e)
+    {
+        if (Owner is MainWindow main)
+            main.ExportConnections(string.Empty);
     }
 
     /// <summary>Al minimizar: al area de notificacion o a la barra de tareas (lo aplica la ventana principal al volver).</summary>

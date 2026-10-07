@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -323,6 +323,25 @@ public sealed class SettingsWindowTests : UiTest
         Ui.Run(() => Ui.Click(w.ImportButton));
         Assert.True(w.LocalReplaced);
         Assert.Equal(Loc.Get("ImportTooltip"), Ui.Run(() => w.ImportButton.ToolTip));
+    }
+
+    [Fact]
+    public void Exportar_desde_ajustes_exporta_todo()
+    {
+        var settings = new AppSettings();
+        var store = new Store();
+        store.Connections.Add(new Models.Connection { Name = "A", Host = "a.lan" });
+        store.Save();
+        var main = Ui.Run(() => Ui.Show(new MainWindow()));
+        var w = Open(settings, Sync(settings), main);
+        Ui.Answer<PromptWindow>(p => Ui.Click(Ui.ButtonById(p, "CancelButton")!));
+        Ui.Run(() => Ui.Click(w.ExportButton));
+        Assert.Equal(0, Ui.PendingAnswers);
+        Assert.Equal(Loc.Get("ExportTooltip"), Ui.Run(() => w.ExportButton.ToolTip));
+
+        // Sin ventana principal, nada.
+        var alone = Open(settings, Sync(settings));
+        Ui.Run(() => Ui.Click(alone.ExportButton));
     }
 
     [Fact]

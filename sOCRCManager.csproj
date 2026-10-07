@@ -12,9 +12,9 @@
     <RootNamespace>SocRcManager</RootNamespace>
     <AssemblyName>sOCRCManager</AssemblyName>
     <ApplicationTitle>sOC Remote Connections Manager</ApplicationTitle>
-    <Version>2026.10.6.0</Version>
-    <AssemblyVersion>2026.10.6.0</AssemblyVersion>
-    <FileVersion>2026.10.6.0</FileVersion>
+    <Version>2026.10.7.0</Version>
+    <AssemblyVersion>2026.10.7.0</AssemblyVersion>
+    <FileVersion>2026.10.7.0</FileVersion>
     <Product>sOC Remote Connections Manager</Product>
     <Company>Socratic</Company>
     <Copyright>Copyright Â© 2026 Socratic</Copyright>

@@ -2,7 +2,7 @@
 
 Recorridos de la ventana de sOC Remote Connections Manager con [FlaUI](https://github.com/FlaUI/FlaUI)
 (MIT) sobre UI Automation y xUnit. Lanzan el **exe Debug ya compilado** en modo aislado y lo manejan
-como lo haría una persona: abrir Ajustes, crear, editar y borrar una conexión, copiar la configuración de otra, importar un `.rdp`,
+como lo haría una persona: abrir Ajustes, crear, editar y borrar una conexión, copiar la configuración de otra, el menú del botón derecho (con Mayús+F10: la única que teclea, y solo con la aplicación en primer plano), exportar una carpeta con frase e importarla, importar un `.rdp`,
 cambiar de idioma y abrir «Acerca de»; sacar una pestaña a su propia ventana y devolverla (comprobando
 que el control de Escritorio remoto es el mismo, con la misma ventana nativa: la sesión no se habría
 cortado), varias ventanas sueltas y cerrar la principal (pregunta; cancelar y aceptar), y la instancia
@@ -21,7 +21,7 @@ dotnet test RCManager.UITests\RCManager.UITests.csproj --no-build
 
 Otro exe: variable `RCMANAGER_EXE` con su ruta (tiene que ser Debug: en Release no hay modo aislado).
 
-Son 11 pruebas y tardan unos 20 s en total; corren una detrás de otra (`xunit.runner.json`), cada
+Son 13 pruebas y tardan unos 30 s en total; corren una detrás de otra (`xunit.runner.json`), cada
 una con su propia instancia de la aplicación y su carpeta de datos vacía.
 
 ## Modo aislado (`SOC_SANDBOX`)
@@ -80,3 +80,7 @@ Arrastrar con el ratón tampoco entra en la tanda (mueve el ratón de verdad): l
 botones. Sacar una pestaña arrastrándola se probó aparte con un guion que solo mueve el ratón si
 nadie ha tocado el equipo en el último minuto (funciona); devolverla arrastrando la barra de la
 ventana suelta queda por confirmar así.
+
+**Ojo: con el equipo en uso.** Las ventanas de la aplicación pasan al frente al abrirse; si a la vez
+se escribe en el teclado, lo tecleado entra en ellas (en la casilla con el foco) y la prueba falla
+(2026-10-07: un espacio en el nombre del editor). Lanzarlas con el equipo libre.

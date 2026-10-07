@@ -104,8 +104,8 @@ Framework 4.8 porque MSBuild de .NET Core no resuelve referencias COM.
 
 ## Pruebas
 
-`RCManager.Tests` (xUnit): **966 pruebas**, todas en verde. Referencian la aplicación entera y
-prueban la lógica (importadores .rdm/.rdp, modelo y árbol, almacén, ajustes, DPAPI y cifrado de la
+`RCManager.Tests` (xUnit): **979 pruebas**, todas en verde. Referencian la aplicación entera y
+prueban la lógica (importadores .rdm/.rdp, exportar e importar .rcm, modelo y árbol, almacén, ajustes, DPAPI y cifrado de la
 nube, Google Drive/OneDrive y OAuth con un HTTP falso, errores de conexión, textos es/en, permisos,
 FTP contra un servidor FTP falso en 127.0.0.1, SFTP/SCP contra uno en memoria, el intérprete y las
 teclas del terminal, instancia única con su tubería de verdad, colocación de ventanas sueltas) y
@@ -119,11 +119,11 @@ bandeja, los monitores y el ratón van detrás de interfaces con un doble. Nada 
 el registro, la nube ni ningún servidor (solo 127.0.0.1).
 
 - Cobertura de lo instrumentado (`sOCRCManager.dll`, ReportGenerator): **99,4 %** de líneas.
-- Cobertura sobre toda la app: **99,4 %** (4993 de 5024 líneas ejecutables en 58 ficheros `.cs`).
+- Cobertura sobre toda la app: **99,4 %** (5137 de 5170 líneas ejecutables en 59 ficheros `.cs`).
   Lo que queda sin cubrir es el pegamento con Windows que no se puede ejecutar en una prueba sin
   efectos fuera: `Shell_NotifyIcon` y el menú de la bandeja, conectar SSH de verdad, `Connect()`
   del control RDP, el diálogo de abrir ficheros del sistema y poco más.
-- Tiempo del banco: **unos 69 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-10-06.
+- Tiempo del banco: **unos 74 s** (`dotnet test --no-build`, sin compilar). Fecha: 2026-10-07.
 
 **Cómo se cuenta «toda la app»** (`tools/cobertura-app.py <carpeta-de-resultados> --app . --detalle`):
 todos los `.cs` de la app, fuera de `obj/`, `bin/`, `*.g.cs`, `*.Designer.cs` y los proyectos de
@@ -135,8 +135,8 @@ sueltas, `using`, declaraciones sin cuerpo como `static extern`, atributos, inte
 comentarios. Por eso la cifra de toda la app puede salir unas décimas por encima de la de
 ReportGenerator, que sí cuenta las llaves.
 
-`RCManager.UITests` (FlaUI): **11 pruebas de interfaz** sobre el exe Debug en modo aislado, en
-**unos 18 s**: arranque, Ajustes, crear/editar/borrar una conexión, copiar la configuración de otra, importar un `.rdp`, idioma,
+`RCManager.UITests` (FlaUI): **13 pruebas de interfaz** sobre el exe Debug en modo aislado, en
+**unos 18 s**: arranque, Ajustes, crear/editar/borrar una conexión, copiar la configuración de otra, el menú del botón derecho, exportar una carpeta y volver a importarla, importar un `.rdp`, idioma,
 «Acerca de», sacar una pestaña a su ventana y devolverla, varias ventanas sueltas al cerrar la
 principal, y la instancia única (segunda instancia con `--open` que trae la primera de la bandeja,
 y arranque con `--tray`). Ver `RCManager.UITests/README.md`.

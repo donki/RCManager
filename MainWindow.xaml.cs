@@ -234,6 +234,7 @@ public partial class MainWindow : Window
                 Tag = new Node { FolderPath = path },
                 IsExpanded = filter.Length > 0 || allExpanded || expanded.Contains(path),
             };
+            item.ContextMenu = FolderMenu(item, path);
             folders[path] = item;
 
             if (slash >= 0)
@@ -262,6 +263,7 @@ public partial class MainWindow : Window
                     string.Equals(c.Caption, c.Name, StringComparison.OrdinalIgnoreCase) ? null : c.Caption),
                 Tag = new Node { Connection = c },
             };
+            item.ContextMenu = ConnectionMenu(item);
             if (c.Folder.Length > 0)
                 FolderItem(c.Folder).Items.Add(item);
             else
@@ -274,6 +276,88 @@ public partial class MainWindow : Window
 
         EmptyTree.Visibility = _store.Connections.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateButtons();
+    }
+
+    /// <summary>
+    /// Boton derecho sobre una conexion: Copiar (lo mismo que Duplicar) y Editar. El boton derecho no
+    /// selecciona la fila en un TreeView: se selecciona al abrir el menu, y las dos opciones actuan
+    /// sobre la seleccion, como los botones de arriba.
+    /// </summary>
+    private ContextMenu ConnectionMenu(TreeViewItem item)
+    {
+        var menu = new ContextMenu();
+        var copy = MenuEntry("CopyMenu", "", "CopyMenuItem", OnDuplicateClick);
+        var edit = MenuEntry("EditMenu", "", "EditMenuItem", OnEditClick);
+        menu.Items.Add(copy);
+        menu.Items.Add(edit);
+        menu.Opened += (_, _) =>
+        {
+            item.IsSelected = true;
+            // Por si se cambio de idioma con el arbol ya montado.
+            copy.Header = Loc.Get("CopyMenu");
+            edit.Header = Loc.Get("EditMenu");
+        };
+        return menu;
+    }
+
+    /// <summary>Boton derecho sobre una carpeta: exportar esa rama (con todo lo que tiene dentro).</summary>
+    private ContextMenu FolderMenu(TreeViewItem item, string path)
+    {
+        var menu = new ContextMenu();
+        var export = MenuEntry("ExportFolderMenu", "", "ExportFolderMenuItem", (_, _) => ExportConnections(path));
+        menu.Items.Add(export);
+        menu.Opened += (_, _) =>
+        {
+            item.IsSelected = true;
+            export.Header = Loc.Get("ExportFolderMenu");
+        };
+        return menu;
+    }
+
+    /// <summary>
+    /// Exporta a un fichero <c>.rcm</c> todas las conexiones (<paramref name="branch"/> vacio) o
+    /// las de una carpeta y sus subcarpetas, para importarlas en otro equipo
+    /// (<see cref="ConnectionExport"/>). Con frase, cifrado y con las contraseñas; sin ella, sin
+    /// contraseñas.
+    /// </summary>
+    public void ExportConnections(string branch)
+    {
+        var content = ConnectionExport.Select(_store.Connections, _store.EmptyFolders, branch);
+        if (content.Connections.Count == 0 && branch.Length == 0)
+        {
+            SetStatus(Loc.Get("ExportNothing"));
+            return;
+        }
+
+        var passphrase = PromptWindow.AskPassword(this, Loc.Get("ExportTitle"), Loc.Format("ExportPassphrase", content.Connections.Count));
+        if (passphrase is null)
+            return;
+
+        var name = branch.Length == 0 ? "conexiones" : branch[(branch.LastIndexOf('/') + 1)..];
+        if (Dialogs.PickSaveFile(this, Loc.Get("ExportFilter"), name + ConnectionExport.Extension) is not { } file)
+            return;
+
+        try
+        {
+            Dialogs.WriteFile(file, ConnectionExport.Write(content, passphrase));
+            SetStatus(Loc.Format(passphrase.Length > 0 ? "ExportedEncrypted" : "ExportedPlain", content.Connections.Count, Path.GetFileName(file)));
+        }
+        catch (Exception ex)
+        {
+            SetStatus(Loc.Format("ExportFailed", ex.Message));
+        }
+    }
+
+    private static MenuItem MenuEntry(string key, string glyph, string automationId, RoutedEventHandler click)
+    {
+        var entry = new MenuItem
+        {
+            Header = Loc.Get(key),
+            Icon = new TextBlock { Text = glyph, FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets") },
+        };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(entry, automationId);
+        entry.Click += click;
+        return entry;
     }
 
     private static IEnumerable<TreeViewItem> Flatten(TreeViewItem item)
@@ -643,12 +727,29 @@ public partial class MainWindow : Window
             var connections = new List<Connection>();
             var folders = new List<string>();
             var skipped = 0;
+            var withPasswords = false;
             foreach (var file in files)
             {
                 if (file.EndsWith(".rdp", StringComparison.OrdinalIgnoreCase))
                 {
                     var rdp = RdpFileImport.Read(file);
                     if (rdp.Host.Length > 0) connections.Add(rdp); else skipped++;
+                }
+                else if (file.EndsWith(ConnectionExport.Extension, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Exportado de otro sOC Remote Connections Manager: si va cifrado, se pide su frase.
+                    var text = File.ReadAllText(file);
+                    string? passphrase = null;
+                    if (ConnectionExport.IsEncrypted(text))
+                    {
+                        passphrase = PromptWindow.AskPassword(this, Loc.Get("ImportTitle"), Loc.Format("ImportPassphrase", Path.GetFileName(file)));
+                        if (passphrase is null)
+                            return;
+                        withPasswords = true;
+                    }
+                    var r = ConnectionExport.Read(text, passphrase);
+                    connections.AddRange(r.Connections);
+                    folders.AddRange(r.Folders);
                 }
                 else
                 {
@@ -672,10 +773,14 @@ public partial class MainWindow : Window
                 added++;
             }
 
-            _store.EmptyFolders.AddRange(result.Folders);
+            _store.EmptyFolders.AddRange(result.Folders.Where(f => !_store.EmptyFolders.Contains(f, StringComparer.OrdinalIgnoreCase)));
             _store.Save();
             BuildTree();
-            SetStatus(Loc.Format("Imported", added, result.Connections.Count - added, result.Skipped));
+            SetStatus(Loc.Format(withPasswords ? "ImportedWithPasswords" : "Imported", added, result.Connections.Count - added, result.Skipped));
+        }
+        catch (System.Security.Cryptography.CryptographicException)
+        {
+            SetStatus(Loc.Get("ImportWrongPassphrase"));
         }
         catch (Exception ex)
         {

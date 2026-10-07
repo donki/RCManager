@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using SocRcManager.Localization;
@@ -250,6 +250,151 @@ public sealed class MainTreeTests : MainWindowTest
         Assert.NotEqual(c.Id, copy.Id);
         Assert.Null(copy.LastConnectedAt);
         Assert.Equal(("Clientes", "web.lan"), (copy.Folder, copy.Host));
+    }
+
+    [Fact]
+    public void Boton_derecho_en_una_conexion_copia_o_edita()
+    {
+        Seed([Conn("Web", "Clientes"), Conn("Otra", "Clientes")]);
+        var main = NewMain();
+        var edited = false;
+        Ui.Answer<ConnectionWindow>(w =>
+        {
+            edited = w.NameBox.Text == "Otra";
+            Ui.Click(w.CancelButton);
+        });
+        Ui.Run(() =>
+        {
+            // Las carpetas llevan solo Exportar; cada conexion, el suyo con Copiar y Editar.
+            Assert.Single(Item(main, "Clientes").ContextMenu!.Items);
+            Select(main, "Otra");
+            var menu = Item(main, "Web").ContextMenu!;
+            var entries = menu.Items.Cast<MenuItem>().ToList();
+            Assert.Equal(["CopyMenuItem", "EditMenuItem"], entries.Select(System.Windows.Automation.AutomationProperties.GetAutomationId));
+            Assert.Equal([Loc.Get("CopyMenu"), Loc.Get("EditMenu")], entries.Select(e => (string)e.Header));
+            Assert.All(entries, e => Assert.IsType<TextBlock>(e.Icon));
+
+            // Abrir el menu selecciona la fila sobre la que se pulso (el boton derecho no lo hace solo).
+            menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent, menu));
+            Assert.True(Item(main, "Web").IsSelected);
+            entries[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, entries[0]));
+            Assert.True(Item(main, "Web (2)").IsSelected);
+
+            // Editar, sobre la fila del menu: abre el editor de esa conexion.
+            var other = Item(main, "Otra").ContextMenu!;
+            other.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent, other));
+            var edit = other.Items.Cast<MenuItem>().Last();
+            edit.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, edit));
+        });
+        Assert.Equal(0, Ui.PendingAnswers);
+        Assert.True(edited);
+        Assert.Equal(3, Saved().Connections.Count);
+    }
+
+    private static void AnswerPassphrase(string? passphrase) =>
+        Ui.Answer<PromptWindow>(w =>
+        {
+            if (passphrase is null) { Ui.Click(Ui.ButtonById(w, "CancelButton")!); return; }
+            Ui.Find<Controls.RevealPasswordBox>(w)!.Password = passphrase;
+            Ui.Click(Ui.ButtonById(w, "OkButton")!);
+        });
+
+    [Fact]
+    public void Exportar_una_carpeta_con_frase_e_importarla_en_otro_sitio()
+    {
+        Seed([Conn("Dc", "Clientes/Acme"), Conn("Fs", "Clientes/Acme/Sub"), Conn("Web", "Clientes")], "Clientes/Acme/Vacia");
+        var main = NewMain();
+        var menu = Ui.Run(() => Item(main, "Acme").ContextMenu!);
+        MenuItem Export() => (MenuItem)menu.Items[0];
+        void Click() => Ui.Run(() =>
+        {
+            menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent, menu));
+            Export().RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, Export()));
+        });
+
+        Ui.Run(() =>
+        {
+            Assert.Equal("ExportFolderMenuItem", System.Windows.Automation.AutomationProperties.GetAutomationId(Export()));
+            Assert.Equal(Loc.Get("ExportFolderMenu"), Export().Header);
+        });
+
+        // Cancelar la frase o el dialogo de guardar: no se escribe nada.
+        AnswerPassphrase(null);
+        Click();
+        AnswerPassphrase("frase");
+        Click();
+        Assert.Equal("Acme.rcm", Ui.SaveAsAsked);
+        Assert.Empty(Ui.Written);
+
+        Ui.SaveAs = "C:/fuera/Acme.rcm";
+        AnswerPassphrase("frase");
+        Click();
+        Assert.Equal(0, Ui.PendingAnswers);
+        var text = Assert.Single(Ui.Written).Value;
+        Ui.Run(() =>
+        {
+            Assert.True(Item(main, "Acme").IsSelected);
+            Assert.Equal(Loc.Format("ExportedEncrypted", 2, "Acme.rcm"), main.StatusText.Text);
+            Assert.Contains(Loc.Format("ExportPassphrase", 2), Ui.FindAll<TextBlock>(Ui.Modals.Last()).Select(t => t.Text));
+        });
+
+        // Importarlo: pide la frase; mala, lo dice; buena, entra «Acme» en la raiz con las contraseñas.
+        var file = Dir.File("Acme.rcm", text);
+        Ui.PickedFiles = [file];
+        AnswerPassphrase(null);
+        Ui.Run(main.ImportRdm);
+        AnswerPassphrase("mala");
+        Ui.Run(main.ImportRdm);
+        Ui.Run(() => Assert.Equal(Loc.Get("ImportWrongPassphrase"), main.StatusText.Text));
+        Assert.Equal(3, Saved().Connections.Count);
+
+        AnswerPassphrase("frase");
+        Ui.Run(main.ImportRdm);
+        var store = Saved();
+        Assert.Equal(5, store.Connections.Count);
+        var dc = store.Connections.Single(c => c.Folder == "Acme");
+        Assert.Equal("pw", Secrets.Unprotect(dc.PasswordProtected));
+        Assert.Contains("Acme/Vacia", store.EmptyFolders);
+        Ui.Run(() => Assert.Equal(Loc.Format("ImportedWithPasswords", 2, 0, 0), main.StatusText.Text));
+
+        // Otra vez el mismo: ya estan, no se duplican ni las carpetas vacias.
+        AnswerPassphrase("frase");
+        Ui.Run(main.ImportRdm);
+        Assert.Equal(5, Saved().Connections.Count);
+        Assert.Single(Saved().EmptyFolders, f => f == "Acme/Vacia");
+        Ui.Run(() => Assert.Equal(Loc.Format("ImportedWithPasswords", 0, 2, 0), main.StatusText.Text));
+    }
+
+    [Fact]
+    public void Exportar_todo_sin_frase_y_sin_nada_que_exportar()
+    {
+        Seed([]);
+        var main = NewMain();
+        Ui.Run(() => main.ExportConnections(""));
+        Ui.Run(() => Assert.Equal(Loc.Get("ExportNothing"), main.StatusText.Text));
+        Assert.Equal(0, Ui.PendingAnswers);
+
+        Seed([Conn("Dc", "Clientes"), Conn("Suelta")]);
+        main = NewMain();
+        Ui.SaveAs = "C:/fuera/todo.rcm";
+        AnswerPassphrase("");
+        Ui.Run(() => main.ExportConnections(""));
+        Assert.Equal("conexiones.rcm", Ui.SaveAsAsked);
+        var text = Ui.Written["C:/fuera/todo.rcm"];
+        Assert.False(ConnectionExport.IsEncrypted(text));
+        Assert.DoesNotContain("dpapi", text);
+        Ui.Run(() => Assert.Equal(Loc.Format("ExportedPlain", 2, "todo.rcm"), main.StatusText.Text));
+
+        // Sin contraseñas: al importar no se pide frase.
+        Ui.PickedFiles = [Dir.File("todo.rcm", text)];
+        Ui.Run(main.ImportRdm);
+        Ui.Run(() => Assert.Equal(Loc.Format("Imported", 0, 2, 0), main.StatusText.Text));
+
+        // Un fallo al escribir se dice.
+        Dialogs.WriteFile = (_, _) => throw new IOException("disco lleno");
+        AnswerPassphrase("");
+        Ui.Run(() => main.ExportConnections("Clientes"));
+        Ui.Run(() => Assert.Equal(Loc.Format("ExportFailed", "disco lleno"), main.StatusText.Text));
     }
 
     [Fact]
