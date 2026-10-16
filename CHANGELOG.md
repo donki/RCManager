@@ -1,8 +1,15 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
-## Sin publicar
+## 2026.10.16.0 — Menús con el aspecto común de las apps sOC
 
-- Menús contextuales y de bandeja con el aspecto común de las apps sOC (General 6.14).
+- Los menús del botón derecho (conexiones, carpetas, sesiones y pestañas) y el del icono junto al
+  reloj tienen el mismo aspecto que en el resto de aplicaciones sOC, con iconos, en tema claro y
+  oscuro (General 6.14). «Desconectar» sale en rojo.
+- Pruebas: 979 de lógica e interfaz, todas en verde; cobertura de toda la aplicación, 99,4 %.
+
+**English.** The right-click menus (connections, folders, sessions and tabs) and the menu of the
+icon next to the clock now look the same as in the other sOC apps, with icons, in light and dark
+theme.
 
 ## 2026.10.7.0 — Menú del botón derecho y exportar conexiones a otro RC Manager
 
