@@ -1,5 +1,9 @@
 ﻿# Changelog — sOC Remote Connections Manager
 
+## Sin publicar
+
+- Menús contextuales y de bandeja con el aspecto común de las apps sOC (General 6.14).
+
 ## 2026.10.7.0 — Menú del botón derecho y exportar conexiones a otro RC Manager
 
 - **Botón derecho sobre una conexión**: **Copiar** (una copia nueva, como Duplicar) y **Editar**.

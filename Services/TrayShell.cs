@@ -1,5 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Interop;
 
 namespace SocRcManager.Services;
 
@@ -18,8 +21,8 @@ internal interface ITrayShell
 
     void Delete(IntPtr hwnd);
 
-    /// <summary>Menu emergente en el raton; lo elegido llega a la ventana como WM_COMMAND con su id. Texto null = separador.</summary>
-    void ShowMenu(IntPtr hwnd, IReadOnlyList<(int Id, string? Text)> items);
+    /// <summary>Abre ese menu (WPF, ya con sus acciones) junto al raton.</summary>
+    void ShowMenu(IntPtr hwnd, ContextMenu menu);
 
     /// <summary>Activa la ventana y la pasa al frente.</summary>
     void Activate(Window window, IntPtr hwnd);
@@ -46,16 +49,16 @@ internal sealed class Win32TrayShell : ITrayShell
         Shell_NotifyIcon(2 /* NIM_DELETE */, ref data);
     }
 
-    public void ShowMenu(IntPtr hwnd, IReadOnlyList<(int Id, string? Text)> items)
+    public void ShowMenu(IntPtr hwnd, ContextMenu menu)
     {
-        var menu = CreatePopupMenu();
-        foreach (var (id, text) in items)
-            AppendMenu(menu, text is null ? 0x800 /* MF_SEPARATOR */ : 0, id, text);
-        GetCursorPos(out var p);
-        SetForegroundWindow(hwnd);   // sin esto el menu no se cierra al pinchar fuera
-        TrackPopupMenu(menu, 0x0080 /* TPM_RIGHTBUTTON */, p.X, p.Y, 0, hwnd, IntPtr.Zero);
-        PostMessage(hwnd, 0, IntPtr.Zero, IntPtr.Zero);
-        DestroyMenu(menu);
+        menu.Placement = PlacementMode.MousePoint;
+        // Al abrirse pasa a primer plano: sin esto el menu no se cierra al pinchar fuera.
+        menu.Opened += (_, _) =>
+        {
+            if (PresentationSource.FromVisual(menu) is HwndSource popup)
+                SetForegroundWindow(popup.Handle);
+        };
+        menu.IsOpen = true;
     }
 
     public void Activate(Window window, IntPtr hwnd)
@@ -123,17 +126,8 @@ internal sealed class Win32TrayShell : ITrayShell
         public IntPtr hBalloonIcon;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Point { public int X, Y; }
-
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] private static extern bool Shell_NotifyIcon(int message, ref NotifyIconData data);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")] private static extern IntPtr CreatePopupMenu();
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool AppendMenu(IntPtr menu, int flags, int id, string? text);
-    [DllImport("user32.dll")] private static extern bool DestroyMenu(IntPtr menu);
-    [DllImport("user32.dll")] private static extern bool TrackPopupMenu(IntPtr menu, int flags, int x, int y, int reserved, IntPtr hWnd, IntPtr rect);
-    [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point p);
-    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr LoadIcon(IntPtr instance, IntPtr name);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] private static extern int ExtractIconEx(string file, int index, IntPtr[] large, IntPtr[] small, int count);
 }

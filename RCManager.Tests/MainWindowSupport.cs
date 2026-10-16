@@ -92,17 +92,16 @@ internal sealed class FakeDesktop : IDesktop
 internal sealed class FakeTrayShell : ITrayShell
 {
     public List<string> Calls { get; } = [];
-    public List<(int Id, string? Text)> LastMenu { get; } = [];
+    public ContextMenu? LastMenu { get; private set; }
 
     public void Add(IntPtr hwnd, int callbackMessage, string tip) => Calls.Add($"add {callbackMessage:X} {tip}");
     public void Balloon(IntPtr hwnd, string title, string text) => Calls.Add($"balloon {title}|{text}");
     public void Delete(IntPtr hwnd) => Calls.Add("delete");
 
-    public void ShowMenu(IntPtr hwnd, IReadOnlyList<(int Id, string? Text)> items)
+    public void ShowMenu(IntPtr hwnd, ContextMenu menu)
     {
         Calls.Add("menu");
-        LastMenu.Clear();
-        LastMenu.AddRange(items);
+        LastMenu = menu;
     }
 
     public void Activate(Window window, IntPtr hwnd) => Calls.Add("activate");

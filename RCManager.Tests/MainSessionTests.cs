@@ -566,8 +566,7 @@ public sealed class MainSessionTests : MainWindowTest
 
         // «Salir» del menu del icono cierra la ventana.
         var tray = Peek.Field<TrayIcon>(main, "_tray");
-        var handled = false;
-        Ui.Run(() => tray.Hook(IntPtr.Zero, TrayIcon.WmCommand, new IntPtr(TrayIcon.IdExit), IntPtr.Zero, ref handled));
+        Ui.Run(() => Input.Click(tray.Menu().Items.OfType<MenuItem>().Last()));
         Ui.Run(() => Assert.DoesNotContain(main, Application.Current.Windows.OfType<Window>()));
     }
 

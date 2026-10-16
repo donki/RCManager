@@ -1,20 +1,21 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 
 namespace SocRcManager.Services;
 
 /// <summary>
 /// Icono en el area de notificacion: al minimizar (si el ajuste lo dice) la ventana se esconde y
-/// queda el icono; clic para volver, boton derecho para «Abrir» o «Salir». Shell_NotifyIcon (via
+/// queda el icono; clic para volver, boton derecho para «Abrir» o «Salir» (menu WPF con el aspecto
+/// comun de las aplicaciones sOC, constitucion general 6.14). Shell_NotifyIcon (via
 /// <see cref="ITrayShell"/>) y un gancho en el procedimiento de la ventana (HwndSource) para cazar
 /// SC_MINIMIZE. Igual que el de sOC Lucia: si se toca uno, mirar el otro.
 /// </summary>
 public sealed class TrayIcon : IDisposable
 {
-    internal const int WmSysCommand = 0x0112, WmCommand = 0x0111, WmRButtonUp = 0x0205, WmLButtonUp = 0x0202, WmLButtonDblClk = 0x0203;
+    internal const int WmSysCommand = 0x0112, WmRButtonUp = 0x0205, WmLButtonUp = 0x0202, WmLButtonDblClk = 0x0203;
     internal const int WmTray = 0x8001;   // WM_APP + 1
     internal const int ScMinimize = 0xF020;
-    internal const int IdOpen = 1, IdExit = 2;
 
     /// <summary>El area de notificacion que se usa (las pruebas ponen una de mentira).</summary>
     internal static ITrayShell Shell { get; set; } = new Win32TrayShell();
@@ -70,15 +71,6 @@ public sealed class TrayIcon : IDisposable
                 else if (evt == WmRButtonUp) ShowMenu();
                 handled = true;
                 break;
-            case WmCommand when (int)((long)wParam & 0xFFFF) == IdOpen:
-                Restore();
-                handled = true;
-                break;
-            case WmCommand when (int)((long)wParam & 0xFFFF) == IdExit:
-                Remove();
-                _exit();
-                handled = true;
-                break;
         }
         return IntPtr.Zero;
     }
@@ -99,11 +91,24 @@ public sealed class TrayIcon : IDisposable
         Remove();
     }
 
-    /// <summary>El menu del boton derecho: «Abrir», separador y «Salir».</summary>
-    internal IReadOnlyList<(int Id, string? Text)> MenuItems() =>
-        [(IdOpen, _text("TrayOpen")), (0, null), (IdExit, _text("TrayExit"))];
+    /// <summary>El menu del boton derecho: «Abrir», separador y «Salir», cada uno con su icono.</summary>
+    internal ContextMenu Menu()
+    {
+        var menu = Menus.Create();
+        menu.Items.Add(Menus.Item(_text("TrayOpen"), "", () => Restore()));
+        menu.Items.Add(Menus.Separator());
+        menu.Items.Add(Menus.Item(_text("TrayExit"), "", Exit));
+        return menu;
+    }
 
-    private void ShowMenu() => _shell.ShowMenu(_hwnd, MenuItems());
+    private void ShowMenu() => _shell.ShowMenu(_hwnd, Menu());
+
+    /// <summary>«Salir»: quita el icono y cierra la aplicacion.</summary>
+    private void Exit()
+    {
+        Remove();
+        _exit();
+    }
 
     private void Add()
     {

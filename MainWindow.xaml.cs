@@ -285,9 +285,9 @@ public partial class MainWindow : Window
     /// </summary>
     private ContextMenu ConnectionMenu(TreeViewItem item)
     {
-        var menu = new ContextMenu();
-        var copy = MenuEntry("CopyMenu", "", "CopyMenuItem", OnDuplicateClick);
-        var edit = MenuEntry("EditMenu", "", "EditMenuItem", OnEditClick);
+        var menu = Menus.Create();
+        var copy = Menus.Item(Loc.Get("CopyMenu"), "", OnDuplicateClick, automationId: "CopyMenuItem");
+        var edit = Menus.Item(Loc.Get("EditMenu"), "", OnEditClick, automationId: "EditMenuItem");
         menu.Items.Add(copy);
         menu.Items.Add(edit);
         menu.Opened += (_, _) =>
@@ -303,8 +303,8 @@ public partial class MainWindow : Window
     /// <summary>Boton derecho sobre una carpeta: exportar esa rama (con todo lo que tiene dentro).</summary>
     private ContextMenu FolderMenu(TreeViewItem item, string path)
     {
-        var menu = new ContextMenu();
-        var export = MenuEntry("ExportFolderMenu", "", "ExportFolderMenuItem", (_, _) => ExportConnections(path));
+        var menu = Menus.Create();
+        var export = Menus.Item(Loc.Get("ExportFolderMenu"), "", () => ExportConnections(path), automationId: "ExportFolderMenuItem");
         menu.Items.Add(export);
         menu.Opened += (_, _) =>
         {
@@ -346,18 +346,6 @@ public partial class MainWindow : Window
         {
             SetStatus(Loc.Format("ExportFailed", ex.Message));
         }
-    }
-
-    private static MenuItem MenuEntry(string key, string glyph, string automationId, RoutedEventHandler click)
-    {
-        var entry = new MenuItem
-        {
-            Header = Loc.Get(key),
-            Icon = new TextBlock { Text = glyph, FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets") },
-        };
-        System.Windows.Automation.AutomationProperties.SetAutomationId(entry, automationId);
-        entry.Click += click;
-        return entry;
     }
 
     private static IEnumerable<TreeViewItem> Flatten(TreeViewItem item)
@@ -1158,17 +1146,15 @@ public partial class MainWindow : Window
     /// <summary>Menu con las sesiones abiertas: se elige una y pasa a ser la pestaña activa (o su ventana suelta, al frente).</summary>
     private void OnSessionsClick(object sender, RoutedEventArgs e)
     {
-        var menu = new ContextMenu();
+        var menu = Menus.Create();
         foreach (var open in _open)
         {
-            var item = new MenuItem
-            {
-                Header = open.TitleText.Text.Length > 0 ? open.TitleText.Text : open.Connection.Name,
-                IsChecked = open.IsDetached ? open.Window!.IsActive : ReferenceEquals(Tabs.SelectedItem, open.Tab),
-                Icon = new TextBlock { Text = open.Connection.Kind switch { ConnectionKind.Ssh => "", ConnectionKind.Sftp or ConnectionKind.Ftp => "", _ => "" }, FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets") },
-            };
             var target = open;
-            item.Click += (_, _) => SelectSession(target);
+            var item = Menus.Item(open.TitleText.Text.Length > 0 ? open.TitleText.Text : open.Connection.Name,
+                open.Connection.Kind switch { ConnectionKind.Ssh => "", ConnectionKind.Sftp or ConnectionKind.Ftp => "", _ => "" },
+                () => SelectSession(target));
+            // La activa sale marcada (en seminegrita, estilo TrayItem).
+            item.IsChecked = open.IsDetached ? open.Window!.IsActive : ReferenceEquals(Tabs.SelectedItem, open.Tab);
             menu.Items.Add(item);
         }
         if (menu.Items.Count == 0)
@@ -1290,19 +1276,19 @@ public partial class MainWindow : Window
     //  Pestañas sueltas: sacar una pestaña a su propia ventana y devolverla
     // =====================================================================
 
-    /// <summary>Boton derecho sobre la pestaña: sacarla (o devolverla) y desconectar.</summary>
+    /// <summary>Boton derecho sobre la pestaña: sacarla (o devolverla) y desconectar (en rojo: es destructiva).</summary>
     private ContextMenu TabMenu(OpenSession open)
     {
-        var menu = new ContextMenu();
-        var move = new MenuItem();
-        var disconnect = new MenuItem { Header = Loc.Get("DisconnectMenu") };
-        move.Click += (_, _) => { if (open.IsDetached) Attach(open); else Detach(open, null); };
-        disconnect.Click += (_, _) => CloseSession(open);
+        var menu = Menus.Create();
+        var move = Menus.Item(string.Empty, "", () => { if (open.IsDetached) Attach(open); else Detach(open, null); });
+        var disconnect = Menus.Item(Loc.Get("DisconnectMenu"), "", () => CloseSession(open), danger: true);
         menu.Items.Add(move);
+        menu.Items.Add(Menus.Separator());
         menu.Items.Add(disconnect);
         menu.Opened += (_, _) =>
         {
             move.Header = Loc.Get(open.IsDetached ? "AttachMenu" : "DetachMenu");
+            ((TextBlock)move.Icon).Text = open.IsDetached ? "" : "";
             disconnect.Header = Loc.Get("DisconnectMenu");
         };
         return menu;

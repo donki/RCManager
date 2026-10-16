@@ -278,8 +278,7 @@ public sealed class MainDetachTests : MainWindowTest
             Assert.False(main.IsVisible);
         });
         var tray = Peek.Field<TrayIcon>(main, "_tray");
-        var handled = false;
-        Ui.Run(() => tray.Hook(IntPtr.Zero, TrayIcon.WmCommand, new IntPtr(TrayIcon.IdExit), IntPtr.Zero, ref handled));   // cancelada
+        Ui.Run(() => Input.Click(tray.Menu().Items.OfType<MenuItem>().Last()));   // «Salir», cancelada
         Ui.Flush();
         Ui.Run(() =>
         {

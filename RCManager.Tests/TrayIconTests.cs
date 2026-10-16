@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using SocRcManager.Services;
 
@@ -119,10 +120,17 @@ public sealed class TrayIconTests : UiTest
         Hook(tray, TrayIcon.WmTray, 0, TrayIcon.WmLButtonDblClk, out _);
         Assert.False(Ui.Run(() => tray.Hidden));
 
-        // Boton derecho: el menu «Abrir», separador, «Salir».
+        // Boton derecho: el menu «Abrir», separador, «Salir», con el estilo comun y un icono en cada elemento.
         Hook(tray, TrayIcon.WmTray, 0, TrayIcon.WmRButtonUp, out handled);
         Assert.True(handled);
-        Assert.Equal([(TrayIcon.IdOpen, "[TrayOpen]"), (0, null), (TrayIcon.IdExit, "[TrayExit]")], _shell.LastMenu);
+        Ui.Run(() =>
+        {
+            var items = _shell.LastMenu!.Items.Cast<FrameworkElement>().ToList();
+            Assert.Equal(["[TrayOpen]", null, "[TrayExit]"], items.Select(i => (i as MenuItem)?.Header as string));
+            Assert.IsType<Separator>(items[1]);
+            Assert.All(items.OfType<MenuItem>(), i => Assert.False(string.IsNullOrEmpty(((TextBlock)i.Icon).Text)));
+            Assert.Same(Application.Current.FindResource("TrayMenu"), _shell.LastMenu.Style);
+        });
 
         // Otro evento del icono (mover el raton por encima): atendido pero sin hacer nada.
         _shell.Calls.Clear();
@@ -132,22 +140,20 @@ public sealed class TrayIconTests : UiTest
     }
 
     [Fact]
-    public void Gancho_ordenes_del_menu_abrir_y_salir()
+    public void Menu_abrir_y_salir()
     {
         var (_, tray) = Shown();
         Ui.Run(tray.HideToTray);
-        Hook(tray, TrayIcon.WmCommand, TrayIcon.IdOpen, 0, out var handled);
-        Assert.True(handled);
+        Ui.Run(() => Input.Click(tray.Menu().Items.OfType<MenuItem>().First()));
         Assert.False(Ui.Run(() => tray.Hidden));
 
         Ui.Run(tray.HideToTray);
-        Hook(tray, TrayIcon.WmCommand, TrayIcon.IdExit, 0, out handled);
-        Assert.True(handled);
+        Ui.Run(() => Input.Click(tray.Menu().Items.OfType<MenuItem>().Last()));
         Assert.Equal(1, _exits);
         Assert.False(tray.IconShown);
 
-        // Otra orden cualquiera: no es nuestra.
-        Hook(tray, TrayIcon.WmCommand, 99, 0, out handled);
+        // Otro mensaje cualquiera (una orden de menu, cerrar): no es nuestro.
+        Hook(tray, 0x0111 /* WM_COMMAND */, 2, 0, out var handled);
         Assert.False(handled);
         Hook(tray, 0x0010 /* WM_CLOSE */, 0, 0, out handled);
         Assert.False(handled);

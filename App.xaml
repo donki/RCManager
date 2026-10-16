@@ -25,6 +25,11 @@
             <SolidColorBrush x:Key="Danger" Color="#BA1A1A" />
             <SolidColorBrush x:Key="MirrorBackground" Color="#1B1B22" />
             <SolidColorBrush x:Key="WarningSurface" Color="#FFF4E5" />
+            <SolidColorBrush x:Key="SelectionSurface" Color="#E4E1FF" />
+            <SolidColorBrush x:Key="PrimaryText" Color="#3525CD" />
+
+            <!-- Iconos planos (constitucion general 6.1): Segoe Fluent Icons y, de reserva, Segoe MDL2 Assets. -->
+            <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
             <!-- ============================ Texto ============================ -->
             <Style x:Key="BodyText" TargetType="TextBlock">
@@ -372,6 +377,93 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+
+
+            <!-- ============================ Menus ============================ -->
+
+            <!--
+                Menus contextuales y de bandeja: los de sOC ScreenShare (constitucion general 6.14).
+                Tarjeta de esquinas de 10 px sin sombra; elementos de 32 px con icono, texto y flecha
+                de submenu. Los implicitos de abajo los aplican a todo ContextMenu, MenuItem y
+                Separator de la aplicacion (tambien al de copiar y pegar de los cuadros de texto).
+            -->
+            <Style x:Key="TrayMenu" TargetType="ContextMenu">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="HasDropShadow" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContextMenu">
+                            <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource Separator}"
+                                    BorderThickness="1" CornerRadius="10" Padding="4" MinWidth="240">
+                                <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="TrayItem" TargetType="MenuItem">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="MenuItem">
+                            <Grid>
+                                <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="8,7,10,7" MinHeight="32">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="26" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter ContentSource="Icon" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                                        <ContentPresenter x:Name="HeaderHost" Grid.Column="1" ContentSource="Header" RecognizesAccessKey="False" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="Arrow" Grid.Column="2" Text="&#xE76C;" FontFamily="{StaticResource IconFont}" FontSize="10"
+                                                   Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+                                    </Grid>
+                                </Border>
+                                <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="2" AllowsTransparency="True"
+                                       IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Focusable="False" PopupAnimation="Fade">
+                                    <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource Separator}"
+                                            BorderThickness="1" CornerRadius="10" Padding="4" MinWidth="220">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="HasItems" Value="True">
+                                    <Setter TargetName="Arrow" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SelectionSurface}" />
+                                </Trigger>
+                                <!-- La marcada (la sesion activa en el menu de sesiones), en seminegrita. -->
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="HeaderHost" Property="TextElement.FontWeight" Value="SemiBold" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="TraySeparator" TargetType="Separator">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Separator">
+                            <Border Height="1" Margin="8,4" Background="{DynamicResource Separator}" />
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="ContextMenu" BasedOn="{StaticResource TrayMenu}" />
+            <Style TargetType="MenuItem" BasedOn="{StaticResource TrayItem}" />
+            <Style TargetType="Separator" BasedOn="{StaticResource TraySeparator}" />
 
         </ResourceDictionary>
     </Application.Resources>

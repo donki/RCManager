@@ -26,6 +26,8 @@ public static class ThemeManager
         ["TextSecondary"] = "#C7C4D8",
         ["MirrorBackground"] = "#000000",
         ["WarningSurface"] = "#33291A",
+        ["SelectionSurface"] = "#2E2A55",
+        ["PrimaryText"] = "#A9A3FF",
     };
 
     /// <summary>Colores del tema claro.</summary>
@@ -38,6 +40,8 @@ public static class ThemeManager
         ["TextSecondary"] = "#464555",
         ["MirrorBackground"] = "#1B1B22",
         ["WarningSurface"] = "#FFF4E5",
+        ["SelectionSurface"] = "#E4E1FF",
+        ["PrimaryText"] = "#3525CD",
     };
 
     /// <summary>Los colores que cambian entre el tema claro y el oscuro.</summary>
